@@ -39,12 +39,6 @@ services:
         destination: /index.html
     envVars:
       - key: REACT_APP_API_URL
-        fromService:
-          type: web
-          name: livemail-backend
-          property: hostpath
+        sync: false
       - key: REACT_APP_SOCKET_URL
-        fromService:
-          type: web
-          name: livemail-backend
-          property: hostpath
+        sync: false
