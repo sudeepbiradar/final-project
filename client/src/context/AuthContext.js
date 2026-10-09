@@ -2,8 +2,15 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 import { disconnectSocket } from '../services/socket';
 
-const AuthContext = createContext();
-const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const getApiBaseUrl = () => {
+  if (process.env.REACT_APP_API_URL) return process.env.REACT_APP_API_URL;
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    return 'https://livemail-backend.onrender.com';
+  }
+  return 'http://localhost:5000';
+};
+
+const API_BASE = getApiBaseUrl();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {

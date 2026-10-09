@@ -39,7 +39,15 @@ const Login = () => {
         if (!loading && user) navigate('/dashboard');
     }, [user, loading, navigate]);
 
-    const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+    const getApiUrl = () => {
+        if (process.env.REACT_APP_API_URL) return process.env.REACT_APP_API_URL;
+        if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+            return 'https://livemail-backend.onrender.com';
+        }
+        return 'http://localhost:5000';
+    };
+
+    const API_URL = getApiUrl();
 
     const handleGoogleLogin = () => {
         window.location.href = `${API_URL}/auth/google`;
