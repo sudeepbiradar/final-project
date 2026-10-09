@@ -23,28 +23,57 @@ router.get('/google', (req, res, next) => {
   })(req, res, next);
 });
 
-const getClientUrl = () => process.env.CLIENT_URL || 'http://localhost:3000';
+const getClientUrl = () => {
+  let raw = (process.env.CLIENT_URL || '').trim().replace(/['"]/g, '');
+  if (!raw) {
+    raw = process.env.NODE_ENV === 'production'
+      ? 'https://livemail-frontend.onrender.com'
+      : 'http://localhost:3000';
+  }
+  return raw.replace(/\/+$/, '');
+};
 
 const handleOAuthCallback = (req, res, next) => {
   passport.authenticate('google', { session: true }, (err, user) => {
-    const clientUrl = getClientUrl();
+    const baseUrl = getClientUrl();
     if (err || !user) {
-      console.error('OAuth Callback Failed:', err);
-      return res.redirect(`${clientUrl}/?error=auth_failed`);
+      console.error('>>> [OAuth Callback Error]:', err?.message || err);
+      const target = `${baseUrl}/?error=auth_failed`;
+      return res.redirect(target);
     }
 
     req.logIn(user, (loginErr) => {
-      const token = user.googleId || user._id?.toString();
-      const userPayload = encodeURIComponent(
-        JSON.stringify({
-          id: token,
-          displayName: user.displayName || user.name || 'User',
-          email: user.email,
-          profilePicture: user.profilePicture || user.picture || user.avatar || '',
-        })
-      );
+      if (loginErr) {
+        console.error('>>> [Login Session Error]:', loginErr.message);
+        return res.redirect(`${baseUrl}/?error=session_error`);
+      }
 
-      return res.redirect(`${clientUrl}/dashboard?auth_success=true&token=${token}&user=${userPayload}`);
+      const token = user.googleId || String(user._id || 'user-id');
+      const safeUser = {
+        id: token,
+        displayName: user.displayName || user.name || 'User',
+        email: user.email || '',
+        profilePicture: user.profilePicture || ''
+      };
+
+      const userJson = JSON.stringify(safeUser);
+      const userPayload = encodeURIComponent(userJson);
+      const targetUrl = `${baseUrl}/dashboard?auth_success=true&token=${encodeURIComponent(token)}&user=${userPayload}`;
+
+      console.log(`>>> [OAuth Callback Success] Redirecting user ${user.email} to: ${baseUrl}/dashboard`);
+      
+      // Dual-channel redirect: 302 Header + HTML meta refresh backup
+      res.setHeader('Location', targetUrl);
+      return res.status(302).send(`<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="refresh" content="0;url=${targetUrl}">
+    <script>window.location.href = "${targetUrl}";</script>
+  </head>
+  <body>
+    <p>Redirecting to dashboard... <a href="${targetUrl}">Click here if not redirected</a>.</p>
+  </body>
+</html>`);
     });
   })(req, res, next);
 };
