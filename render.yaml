@@ -27,11 +27,12 @@ services:
         generateValue: true
 
   # Frontend Static Site (React Dashboard)
-  - type: static
+  - type: web
     name: livemail-frontend
+    runtime: static
     rootDir: client
     buildCommand: npm install && npm run build
-    staticPublishPath: ./build
+    staticPublishPath: build
     routes:
       - type: rewrite
         source: /*
