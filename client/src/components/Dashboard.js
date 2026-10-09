@@ -2325,7 +2325,7 @@ const Dashboard = () => {
             <motion.aside
                 animate={{ width: sidebarCollapsed ? 72 : 256 }}
                 transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
-                className={`fixed md:relative inset-y-0 left-0 z-40 flex-shrink-0 flex flex-col overflow-hidden glass border-r border-white/60 transition-transform md:translate-x-0 ${
+                className={`fixed md:relative inset-y-0 left-0 z-40 flex-shrink-0 flex flex-col overflow-hidden glass border-r border-white/60 transition-transform md:translate-x-0 w-[280px] md:w-auto ${
                     mobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full md:translate-x-0'
                 }`}
             >
@@ -2348,12 +2348,19 @@ const Dashboard = () => {
                     )}
                     <button
                         onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-all ml-auto"
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-all ml-auto hidden md:block"
                     >
                         <ChevronDown
                             size={16}
                             style={{ transform: sidebarCollapsed ? 'rotate(-90deg)' : 'rotate(90deg)', transition: 'transform 0.25s' }}
                         />
+                    </button>
+                    <button
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-all ml-auto md:hidden"
+                        title="Close Menu"
+                    >
+                        <X size={18} />
                     </button>
                 </div>
 
@@ -2362,8 +2369,11 @@ const Dashboard = () => {
                     <motion.button
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.97 }}
-                        onClick={() => setIsComposeOpen(true)}
-                        className="w-full font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 text-sm bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/25 transition-all"
+                        onClick={() => {
+                            setIsComposeOpen(true);
+                            setMobileMenuOpen(false);
+                        }}
+                        className="w-full font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 text-sm bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/25 transition-all touch-target"
                     >
                         <Plus size={16} />
                         {!sidebarCollapsed && 'Compose'}
@@ -2390,9 +2400,10 @@ const Dashboard = () => {
                                     onClick={() => {
                                         setActiveFolder(f.id);
                                         setActiveCategory('All');
+                                        setMobileMenuOpen(false);
                                     }}
                                     title={sidebarCollapsed ? f.name : undefined}
-                                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200 group relative ${
+                                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative touch-target ${
                                         isActive
                                             ? 'bg-blue-50 text-blue-700 font-bold border border-blue-200/80 shadow-xs'
                                             : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
@@ -2436,9 +2447,12 @@ const Dashboard = () => {
                             return (
                                 <button
                                     key={cat.name}
-                                    onClick={() => setActiveCategory(cat.name)}
+                                    onClick={() => {
+                                        setActiveCategory(cat.name);
+                                        setMobileMenuOpen(false);
+                                    }}
                                     title={sidebarCollapsed ? cat.name : undefined}
-                                    className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-xl transition-all duration-200 group relative ${
+                                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all duration-200 group relative touch-target ${
                                         isActive
                                             ? 'bg-slate-200/80 text-slate-900 font-semibold'
                                             : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
@@ -2468,8 +2482,11 @@ const Dashboard = () => {
                     {!sidebarCollapsed && (
                         <div className="pt-2 border-t border-slate-200/60 space-y-1">
                             <button
-                                onClick={() => setIsStorageModalOpen(true)}
-                                className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 transition-all"
+                                onClick={() => {
+                                    setIsStorageModalOpen(true);
+                                    setMobileMenuOpen(false);
+                                }}
+                                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 transition-all touch-target"
                             >
                                 <HardDrive size={15} className="text-slate-400" />
                                 <span>Storage & Offline Cache</span>
@@ -2520,30 +2537,30 @@ const Dashboard = () => {
             <main className="flex-1 flex flex-col min-w-0 relative bg-transparent z-10">
 
                 {/* ── Topbar ── */}
-                <header className="h-16 flex items-center justify-between gap-4 px-6 flex-shrink-0 z-20 glass-light border-b border-white/60">
+                <header className="h-16 flex items-center justify-between gap-2 sm:gap-4 px-3 sm:px-6 flex-shrink-0 z-20 glass-light border-b border-white/60">
                     {/* Mobile Menu Toggle Button */}
                     <button
                         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                        className="p-2 rounded-xl md:hidden text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all border border-slate-200"
+                        className="p-2 rounded-xl md:hidden text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all border border-slate-200 flex items-center justify-center touch-target"
                         title="Toggle Navigation Menu"
                     >
                         <Menu size={18} />
                     </button>
 
                     {/* Search & Date Filter */}
-                    <div className="relative flex-1 max-w-lg group flex items-center gap-2">
+                    <div className="relative flex-1 max-w-lg group flex items-center gap-1.5 sm:gap-2">
                         <div className="relative flex-1">
                             <Search
                                 size={16}
-                                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors"
+                                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors"
                             />
                             <input
                                 ref={searchInputRef}
                                 type="text"
                                 value={searchQuery}
                                 onChange={e => setSearchQuery(e.target.value)}
-                                placeholder={`Search in ${activeFolder}... (Ctrl+K or /)`}
-                                className="w-full py-2 pl-10 pr-16 rounded-xl text-sm outline-none text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 bg-slate-100/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 transition-all focus:bg-white dark:focus:bg-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/50"
+                                placeholder="Search emails..."
+                                className="w-full py-2 pl-9 pr-8 sm:pr-16 rounded-xl text-xs sm:text-sm outline-none text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 bg-slate-100/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 transition-all focus:bg-white dark:focus:bg-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/50"
                             />
                             <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none">
                                 {!searchQuery && (
@@ -2555,7 +2572,7 @@ const Dashboard = () => {
                             {searchQuery && (
                                 <button
                                     onClick={() => setSearchQuery('')}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors pointer-events-auto"
+                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors pointer-events-auto p-1"
                                 >
                                     <X size={14} />
                                 </button>
@@ -2568,7 +2585,7 @@ const Dashboard = () => {
                                 type="button"
                                 onClick={() => setIsCalendarOpen(!isCalendarOpen)}
                                 title="Filter by date"
-                                className={`p-2 rounded-xl border flex items-center justify-center gap-2 text-sm transition-all duration-200
+                                className={`p-2 rounded-xl border flex items-center justify-center gap-2 text-sm transition-all duration-200 touch-target
                                     ${selectedDate
                                         ? 'bg-blue-50 border-blue-300 text-blue-600 font-semibold'
                                         : 'bg-slate-100/80 border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
@@ -2577,7 +2594,7 @@ const Dashboard = () => {
                             >
                                 <CalendarDays size={16} />
                                 {selectedDate && (
-                                    <span className="text-xs font-semibold pr-1">
+                                    <span className="text-xs font-semibold pr-1 hidden sm:inline">
                                         {new Date(selectedDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                                     </span>
                                 )}
@@ -2597,7 +2614,7 @@ const Dashboard = () => {
                     </div>
 
                     {/* Right Tools & Honest Sync Status */}
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-1.5 sm:gap-2.5">
                         {/* Pending Offline Sync Badge */}
                         {pendingSyncCount > 0 && (
                             <span className="hidden md:inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-300" title="Changes made while offline queued for sync">
@@ -2631,7 +2648,7 @@ const Dashboard = () => {
                             onClick={handleManualSync}
                             disabled={isRefreshing}
                             title="Sync emails with server & local IndexedDB"
-                            className={`p-2 rounded-xl border transition-all active:scale-95 flex items-center gap-1.5 ${
+                            className={`p-2 rounded-xl border transition-all active:scale-95 flex items-center justify-center gap-1.5 touch-target ${
                                 syncStatusMsg?.type === 'error'
                                     ? 'text-rose-700 bg-rose-50 border-rose-200'
                                     : syncStatusMsg?.type === 'success' || syncSuccessMsg
@@ -2677,7 +2694,7 @@ const Dashboard = () => {
                         {/* Storage Modal Button */}
                         <button
                             onClick={() => setIsStorageModalOpen(true)}
-                            className="p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 transition-all"
+                            className="p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 transition-all touch-target flex items-center justify-center"
                             title="Storage Usage & Offline Settings"
                         >
                             <HardDrive size={17} />
@@ -2743,45 +2760,45 @@ const Dashboard = () => {
                 ) : null}
 
                 {/* ── Email List Content ── */}
-                <div className="flex-1 overflow-y-auto p-6 bg-transparent">
-                    <div className="max-w-5xl mx-auto space-y-5">
+                <div className="flex-1 overflow-y-auto p-3 sm:p-6 bg-transparent">
+                    <div className="max-w-5xl mx-auto space-y-4 sm:space-y-5">
 
                         {/* KPI Metric Overview */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                            <div className="p-3.5 rounded-2xl glass-light border border-white/60 shadow-2xs glowing-card hover:scale-[1.02] transition-transform">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+                            <div className="p-3 sm:p-3.5 rounded-2xl glass-light border border-white/60 shadow-2xs glowing-card hover:scale-[1.02] transition-transform">
                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Inbox Total</span>
                                 <div className="flex items-center justify-between">
-                                    <span className="text-xl font-black text-slate-900">{folderCounts.inbox}</span>
+                                    <span className="text-lg sm:text-xl font-black text-slate-900">{folderCounts.inbox}</span>
                                     <div className="p-1.5 rounded-xl bg-blue-50 text-blue-600"><Mail size={16} /></div>
                                 </div>
                             </div>
-                            <div className="p-3.5 rounded-2xl glass-light border border-white/60 shadow-2xs glowing-card hover:scale-[1.02] transition-transform">
+                            <div className="p-3 sm:p-3.5 rounded-2xl glass-light border border-white/60 shadow-2xs glowing-card hover:scale-[1.02] transition-transform">
                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Unread</span>
                                 <div className="flex items-center justify-between">
-                                    <span className="text-xl font-black text-blue-600">{unreadCount}</span>
+                                    <span className="text-lg sm:text-xl font-black text-blue-600">{unreadCount}</span>
                                     <div className="p-1.5 rounded-xl bg-blue-50 text-blue-600"><Inbox size={16} /></div>
                                 </div>
                             </div>
-                            <div className="p-3.5 rounded-2xl glass-light border border-white/60 shadow-2xs glowing-card hover:scale-[1.02] transition-transform">
+                            <div className="p-3 sm:p-3.5 rounded-2xl glass-light border border-white/60 shadow-2xs glowing-card hover:scale-[1.02] transition-transform">
                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">High Priority</span>
                                 <div className="flex items-center justify-between">
-                                    <span className="text-xl font-black text-amber-600">{importantCount}</span>
+                                    <span className="text-lg sm:text-xl font-black text-amber-600">{importantCount}</span>
                                     <div className="p-1.5 rounded-xl bg-amber-50 text-amber-600"><Star size={16} /></div>
                                 </div>
                             </div>
-                            <div className="p-3.5 rounded-2xl glass-light border border-white/60 shadow-2xs glowing-card hover:scale-[1.02] transition-transform">
+                            <div className="p-3 sm:p-3.5 rounded-2xl glass-light border border-white/60 shadow-2xs glowing-card hover:scale-[1.02] transition-transform">
                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Action Required</span>
                                 <div className="flex items-center justify-between">
-                                    <span className="text-xl font-black text-rose-600">{actionRequiredCount}</span>
+                                    <span className="text-lg sm:text-xl font-black text-rose-600">{actionRequiredCount}</span>
                                     <div className="p-1.5 rounded-xl bg-rose-50 text-rose-600"><Zap size={16} /></div>
                                 </div>
                             </div>
                         </div>
 
                         {/* Controls Bar: Filter Chips & Sorting */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-2xl glass-light border border-white/60 shadow-2xs">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-2.5 sm:p-3 rounded-2xl glass-light border border-white/60 shadow-2xs">
                             {/* Filter Chips */}
-                            <div className="flex items-center gap-1.5 flex-wrap">
+                            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 max-w-full">
                                 {[
                                     { id: 'all', label: 'All Messages' },
                                     { id: 'unread', label: 'Unread' },
@@ -2793,7 +2810,7 @@ const Dashboard = () => {
                                     <button
                                         key={chip.id}
                                         onClick={() => setFilterChip(chip.id)}
-                                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex-shrink-0 touch-target ${
                                             filterChip === chip.id
                                                 ? 'bg-blue-600 text-white shadow-xs'
                                                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
@@ -2805,12 +2822,12 @@ const Dashboard = () => {
                             </div>
 
                             {/* Sorting Dropdown */}
-                            <div className="flex items-center gap-2 self-end sm:self-auto">
-                                <ArrowDownUp size={14} className="text-slate-400" />
+                            <div className="flex items-center gap-2 self-start sm:self-auto w-full sm:w-auto">
+                                <ArrowDownUp size={14} className="text-slate-400 flex-shrink-0" />
                                 <select
                                     value={sortBy}
                                     onChange={(e) => setSortBy(e.target.value)}
-                                    className="text-xs p-1.5 px-2.5 rounded-xl bg-slate-50 border border-slate-200 font-bold text-slate-700 outline-none focus:border-blue-500 cursor-pointer"
+                                    className="text-xs p-1.5 px-2.5 rounded-xl bg-slate-50 border border-slate-200 font-bold text-slate-700 outline-none focus:border-blue-500 cursor-pointer w-full sm:w-auto"
                                 >
                                     <option value="newest">Sort: Newest First</option>
                                     <option value="oldest">Sort: Oldest First</option>
@@ -2825,7 +2842,7 @@ const Dashboard = () => {
                         {/* List Header */}
                         <div className="flex items-center justify-between pb-1">
                             <div>
-                                <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                                <h2 className="text-base sm:text-lg font-black text-slate-900 flex items-center gap-2 flex-wrap">
                                     <span>
                                         {activeFolder === 'inbox' && '📥 Inbox'}
                                         {activeFolder === 'starred' && '⭐ Starred'}
@@ -2849,7 +2866,7 @@ const Dashboard = () => {
                                         setSearchQuery('');
                                         setSelectedDate(null);
                                     }}
-                                    className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                                    className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 touch-target"
                                 >
                                     <X size={12} /> Clear filters
                                 </button>
@@ -2865,12 +2882,12 @@ const Dashboard = () => {
                             <motion.div
                                 initial={{ opacity: 0, scale: 0.95 }}
                                 animate={{ opacity: 1, scale: 1 }}
-                                className="flex flex-col items-center justify-center py-20 rounded-3xl border-2 border-dashed border-slate-200 bg-white"
+                                className="flex flex-col items-center justify-center py-16 sm:py-20 rounded-3xl border-2 border-dashed border-slate-200 bg-white p-4"
                             >
                                 <div className="p-5 rounded-full mb-3 bg-blue-50 text-blue-500 shadow-sm">
                                     {activeFolder === 'starred' ? <Star size={36} /> : activeFolder === 'trash' ? <Trash2 size={36} /> : activeFolder === 'archived' ? <Archive size={36} /> : <Inbox size={36} />}
                                 </div>
-                                <h3 className="text-base font-bold text-slate-800 mb-1">
+                                <h3 className="text-base font-bold text-slate-800 mb-1 text-center">
                                     {searchQuery
                                         ? 'No matching emails found'
                                         : activeFolder === 'starred'
@@ -2912,7 +2929,7 @@ const Dashboard = () => {
                                                 exit={{ opacity: 0, scale: 0.97 }}
                                                 transition={{ delay: Math.min(index * 0.02, 0.25) }}
                                                 onClick={() => handleOpenEmail(email)}
-                                                className={`group cursor-pointer rounded-2xl p-4 relative overflow-hidden bg-white border shadow-xs hover:shadow-md transition-all duration-200 ${
+                                                className={`group cursor-pointer rounded-2xl p-3.5 sm:p-4 relative overflow-hidden bg-white border shadow-xs hover:shadow-md transition-all duration-200 ${
                                                     email.isRead ? 'border-slate-200/90' : 'border-blue-300 bg-blue-50/20 shadow-blue-500/5 ring-1 ring-blue-100'
                                                 }`}
                                             >
@@ -2920,11 +2937,11 @@ const Dashboard = () => {
                                                     className="absolute left-0 top-0 bottom-0 rounded-l-2xl"
                                                     style={{ width: 4, background: isImportant ? '#f59e0b' : cat.accent }}
                                                 />
-                                                <div className="flex items-start gap-3.5 pl-2">
+                                                <div className="flex items-start gap-3 pl-1 sm:pl-2">
                                                     {/* Sender Avatar */}
-                                                    <div className="relative flex-shrink-0">
+                                                    <div className="relative flex-shrink-0 mt-0.5">
                                                         <div
-                                                            className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-xs select-none shadow-sm"
+                                                            className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold text-white text-xs select-none shadow-sm"
                                                             style={{
                                                                 background: isImportant
                                                                     ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
@@ -2942,18 +2959,23 @@ const Dashboard = () => {
 
                                                     {/* Content */}
                                                     <div className="flex-1 min-w-0">
-                                                        <div className="flex items-center justify-between gap-2 mb-1">
-                                                            <div className="flex items-center gap-2 truncate">
-                                                                <span className={`text-sm truncate transition-colors ${email.isRead ? 'font-semibold text-slate-700' : 'font-black text-slate-900 group-hover:text-blue-600'}`}>
-                                                                    {email.from?.split('<')[0].trim() || email.from}
+                                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1">
+                                                            <div className="flex items-center justify-between gap-2 min-w-0">
+                                                                <div className="flex items-center gap-1.5 truncate">
+                                                                    <span className={`text-xs sm:text-sm truncate transition-colors ${email.isRead ? 'font-semibold text-slate-700' : 'font-black text-slate-900 group-hover:text-blue-600'}`}>
+                                                                        {email.from?.split('<')[0].trim() || email.from}
+                                                                    </span>
+                                                                    {!email.isRead && (
+                                                                        <span className="w-2 h-2 rounded-full bg-blue-600 flex-shrink-0" title="Unread" />
+                                                                    )}
+                                                                </div>
+                                                                <span className="sm:hidden text-[10px] text-slate-400 font-medium flex-shrink-0">
+                                                                    {formatTime(email.receivedAt)}
                                                                 </span>
-                                                                {!email.isRead && (
-                                                                    <span className="w-2 h-2 rounded-full bg-blue-600 flex-shrink-0" title="Unread" />
-                                                                )}
                                                             </div>
-                                                            <div className="flex items-center gap-2 flex-shrink-0">
+                                                            <div className="flex items-center gap-1.5 flex-wrap">
                                                                 {isImportant && (
-                                                                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1 shadow-xs">
+                                                                    <span className="text-[9px] sm:text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1 shadow-xs">
                                                                         ⭐ IMPORTANT
                                                                     </span>
                                                                 )}
@@ -2962,7 +2984,7 @@ const Dashboard = () => {
                                                                         <Zap size={9} /> ACTION
                                                                     </span>
                                                                 )}
-                                                                <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${cat.badge}`}>
+                                                                <span className={`text-[9px] sm:text-[10px] font-bold px-2.5 py-0.5 rounded-full ${cat.badge}`}>
                                                                     {normalizeCategory(email.category)}
                                                                 </span>
                                                                 {email.categoryCorrectedByUser && (
@@ -2985,15 +3007,15 @@ const Dashboard = () => {
                                                                 <span title="Saved offline on device" className="text-emerald-500">
                                                                     <Database size={12} />
                                                                 </span>
-                                                                <span className="text-[11px] text-slate-400 font-medium">
+                                                                <span className="hidden sm:inline text-[11px] text-slate-400 font-medium">
                                                                     {formatTime(email.receivedAt)}
                                                                 </span>
                                                             </div>
                                                         </div>
-                                                        <h4 className={`text-sm mb-1 truncate ${email.isRead ? 'font-medium text-slate-800' : 'font-bold text-slate-900'}`}>
+                                                        <h4 className={`text-xs sm:text-sm mb-1 truncate ${email.isRead ? 'font-medium text-slate-800' : 'font-bold text-slate-900'}`}>
                                                             {email.subject || '(No Subject)'}
                                                         </h4>
-                                                        <p className="text-xs text-slate-500 line-clamp-1 leading-relaxed mb-1.5">
+                                                        <p className="text-xs text-slate-500 line-clamp-1 leading-relaxed mb-1 break-words-clean">
                                                             {email.snippet || email.text || email.content || '(No content preview)'}
                                                         </p>
                                                     </div>
@@ -3579,7 +3601,7 @@ const Dashboard = () => {
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
-                                className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm"
+                                className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 md:p-6 bg-slate-900/50 backdrop-blur-sm"
                                 onClick={(e) => e.target === e.currentTarget && setSelectedEmail(null)}
                             >
                                 <motion.div
@@ -3587,35 +3609,36 @@ const Dashboard = () => {
                                     animate={{ scale: 1, y: 0 }}
                                     exit={{ scale: 0.94, y: 20 }}
                                     transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                                    className="w-full max-w-3xl max-h-[88vh] rounded-3xl flex flex-col overflow-hidden bg-white border border-slate-200 shadow-2xl text-slate-800"
+                                    className="w-full max-w-3xl max-h-[92vh] sm:max-h-[88vh] rounded-t-3xl sm:rounded-3xl flex flex-col overflow-hidden bg-white border border-slate-200 shadow-2xl text-slate-800 pb-safe"
                                 >
                                     {/* Modal header */}
-                                    <div className="flex items-center justify-between px-6 py-4 flex-shrink-0 border-b border-slate-100 bg-slate-50/50">
-                                        <div className="flex items-center gap-3">
+                                    <div className="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-6 py-3 sm:py-4 flex-shrink-0 border-b border-slate-100 bg-slate-50/50">
+                                        <div className="flex items-center gap-2 flex-wrap">
                                             <button
                                                 onClick={() => setSelectedEmail(null)}
-                                                className="p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-all"
+                                                className="p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-all touch-target flex items-center justify-center"
+                                                title="Close message"
                                             >
                                                 <X size={18} />
                                             </button>
-                                            <span className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full ${cat.badge}`}>
+                                            <span className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full ${cat.badge}`}>
                                                 {normalizeCategory(selectedEmail.category)}
                                             </span>
                                             {isImportant && (
-                                                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1">
+                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1">
                                                     ⭐ Important
                                                 </span>
                                             )}
                                             {!isOnline && (
-                                                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
+                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
                                                     Stored Offline
                                                 </span>
                                             )}
                                         </div>
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2 ml-auto">
                                             <button
                                                 onClick={(e) => handleToggleStar(selectedEmail, e)}
-                                                className={`p-2 rounded-full transition-all ${
+                                                className={`p-2 rounded-full transition-all touch-target flex items-center justify-center ${
                                                     selectedEmail.isStarred
                                                         ? 'text-amber-500 bg-amber-50'
                                                         : 'text-slate-400 hover:text-amber-500 hover:bg-amber-50'
@@ -3626,7 +3649,7 @@ const Dashboard = () => {
                                             </button>
                                             <button
                                                 onClick={() => deleteEmail(selectedEmail)}
-                                                className="p-2 rounded-full text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all"
+                                                className="p-2 rounded-full text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all touch-target flex items-center justify-center"
                                                 title="Delete email"
                                             >
                                                 <Trash2 size={17} />
@@ -3641,7 +3664,7 @@ const Dashboard = () => {
                                                     setSelectedEmail(null);
                                                     setIsComposeOpen(true);
                                                 }}
-                                                className="flex items-center gap-1.5 px-4 py-1.5 rounded-full font-bold text-sm bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/20 transition-all"
+                                                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-bold text-xs sm:text-sm bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/20 transition-all touch-target"
                                             >
                                                 <Reply size={14} />
                                                 Reply
@@ -3650,29 +3673,31 @@ const Dashboard = () => {
                                     </div>
 
                                     {/* Email body */}
-                                    <div className="flex-1 overflow-y-auto p-7 bg-white">
-                                        <h1 className="text-2xl font-black text-slate-900 mb-5 leading-tight">
+                                    <div className="flex-1 overflow-y-auto p-4 sm:p-7 bg-white">
+                                        <h1 className="text-xl sm:text-2xl font-black text-slate-900 mb-4 sm:mb-5 leading-tight break-words-clean">
                                             {selectedEmail.subject || '(No Subject)'}
                                         </h1>
 
                                         {/* Sender & Receiver Card */}
-                                        <div className="flex items-center gap-4 mb-6 p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
-                                            <div
-                                                className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-white text-sm flex-shrink-0 shadow-sm"
-                                                style={{
-                                                    background: isImportant
-                                                        ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
-                                                        : `linear-gradient(135deg, ${getSenderColor(selectedEmail.from)} 0%, ${getSenderColor(selectedEmail.from)}cc 100%)`,
-                                                }}
-                                            >
-                                                {isImportant ? '⭐' : getSenderInitials(selectedEmail.from)}
+                                        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-5 sm:mb-6 p-3.5 sm:p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <div
+                                                    className="w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center font-bold text-white text-xs sm:text-sm flex-shrink-0 shadow-sm"
+                                                    style={{
+                                                        background: isImportant
+                                                            ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
+                                                            : `linear-gradient(135deg, ${getSenderColor(selectedEmail.from)} 0%, ${getSenderColor(selectedEmail.from)}cc 100%)`,
+                                                    }}
+                                                >
+                                                    {isImportant ? '⭐' : getSenderInitials(selectedEmail.from)}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-bold text-slate-900 text-xs sm:text-sm truncate">{selectedEmail.from}</p>
+                                                    <p className="text-xs text-slate-500 truncate">To: {selectedEmail.to || 'me'}</p>
+                                                    {selectedEmail.cc && <p className="text-[11px] text-slate-400 truncate">CC: {selectedEmail.cc}</p>}
+                                                </div>
                                             </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="font-bold text-slate-900 text-sm truncate">{selectedEmail.from}</p>
-                                                <p className="text-xs text-slate-500">To: {selectedEmail.to || 'me'}</p>
-                                                {selectedEmail.cc && <p className="text-[11px] text-slate-400">CC: {selectedEmail.cc}</p>}
-                                            </div>
-                                            <div className="text-xs text-slate-500 font-medium text-right flex-shrink-0">
+                                            <div className="text-[11px] sm:text-xs text-slate-500 font-medium text-left sm:text-right flex-shrink-0 pt-1 sm:pt-0 border-t sm:border-t-0 border-slate-200/60">
                                                 {selectedEmail.receivedAt ? new Date(selectedEmail.receivedAt).toLocaleString([], {
                                                     month: 'short', day: 'numeric',
                                                     hour: '2-digit', minute: '2-digit'
@@ -3702,7 +3727,7 @@ const Dashboard = () => {
 
                                         {/* Attachments Section if present */}
                                         {selectedEmail.attachments && selectedEmail.attachments.length > 0 && (
-                                            <div className="mb-6 p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                                            <div className="mb-6 p-3.5 sm:p-4 rounded-2xl bg-slate-50 border border-slate-200">
                                                 <div className="flex items-center gap-2 mb-3">
                                                     <Paperclip size={15} className="text-blue-600" />
                                                     <span className="text-xs font-bold text-slate-800">
@@ -3730,13 +3755,13 @@ const Dashboard = () => {
                                         {/* HTML / Plain-text body with DOMPurify sanitization */}
                                         {sanitizedHtml ? (
                                             <div
-                                                className="bg-white rounded-2xl p-5 border border-slate-100 text-slate-800 overflow-hidden"
+                                                className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-100 text-slate-800 overflow-x-auto max-w-full break-words-clean"
                                                 style={{ minHeight: 100 }}
                                                 dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
                                             />
                                         ) : (
                                             <div
-                                                className="rounded-2xl p-5 bg-slate-50 border border-slate-200/70 text-slate-700 text-sm leading-7"
+                                                className="rounded-2xl p-4 sm:p-5 bg-slate-50 border border-slate-200/70 text-slate-700 text-xs sm:text-sm leading-6 sm:leading-7 break-words-clean overflow-x-auto max-w-full"
                                                 style={{
                                                     fontFamily: 'inherit',
                                                     whiteSpace: 'pre-wrap',
@@ -3786,7 +3811,7 @@ const Dashboard = () => {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="absolute inset-0 z-[60] flex items-end md:items-center justify-center p-0 md:p-6 bg-slate-900/40 backdrop-blur-sm"
+                            className="fixed inset-0 z-[60] flex items-end md:items-center justify-center p-0 md:p-6 bg-slate-900/40 backdrop-blur-sm"
                             onClick={e => e.target === e.currentTarget && setIsComposeOpen(false)}
                         >
                             <motion.div
@@ -3794,27 +3819,27 @@ const Dashboard = () => {
                                 animate={{ y: 0 }}
                                 exit={{ y: '100%' }}
                                 transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-                                className="w-full max-w-2xl rounded-t-3xl md:rounded-3xl overflow-hidden bg-white border border-slate-200 shadow-2xl"
+                                className="w-full max-w-2xl max-h-[92vh] flex flex-col rounded-t-3xl md:rounded-3xl overflow-hidden bg-white border border-slate-200 shadow-2xl pb-safe"
                             >
-                                <form onSubmit={handleSendEmail}>
-                                    <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-                                        <h3 className="font-extrabold text-base text-slate-900">New Message</h3>
+                                <form onSubmit={handleSendEmail} className="flex flex-col flex-1 min-h-0">
+                                    <div className="flex items-center justify-between px-5 sm:px-6 py-3.5 border-b border-slate-100 bg-slate-50/50 flex-shrink-0">
+                                        <h3 className="font-extrabold text-sm sm:text-base text-slate-900">New Message</h3>
                                         <button
                                             type="button"
                                             onClick={() => setIsComposeOpen(false)}
-                                            className="p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-all"
+                                            className="p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-all touch-target"
                                         >
                                             <X size={18} />
                                         </button>
                                     </div>
-                                    <div className="p-6 space-y-3 bg-white">
+                                    <div className="p-4 sm:p-6 space-y-3 bg-white flex-1 overflow-y-auto">
                                         <input
                                             type="email"
                                             placeholder="To"
                                             required
                                             value={composeData.to}
                                             onChange={e => setComposeData({ ...composeData, to: e.target.value })}
-                                            className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:border-blue-500 outline-none transition-all"
+                                            className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:border-blue-500 outline-none transition-all touch-target"
                                         />
                                         <input
                                             type="text"
@@ -3822,22 +3847,22 @@ const Dashboard = () => {
                                             required
                                             value={composeData.subject}
                                             onChange={e => setComposeData({ ...composeData, subject: e.target.value })}
-                                            className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:border-blue-500 outline-none transition-all"
+                                            className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:border-blue-500 outline-none transition-all touch-target"
                                         />
                                         <textarea
                                             placeholder="Write your message..."
                                             required
-                                            rows={8}
+                                            rows={6}
                                             value={composeData.body}
                                             onChange={e => setComposeData({ ...composeData, body: e.target.value })}
-                                            className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:border-blue-500 outline-none resize-none transition-all"
+                                            className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:border-blue-500 outline-none resize-none transition-all min-h-[140px]"
                                         />
                                     </div>
-                                    <div className="px-6 pb-6 flex items-center justify-between bg-white">
+                                    <div className="px-5 sm:px-6 py-4 flex items-center justify-between bg-white border-t border-slate-100 flex-shrink-0">
                                         <button
                                             type="button"
                                             onClick={() => setIsComposeOpen(false)}
-                                            className="text-sm text-slate-500 hover:text-slate-800 font-medium transition-colors"
+                                            className="text-xs sm:text-sm text-slate-500 hover:text-slate-800 font-medium transition-colors touch-target"
                                         >
                                             Discard
                                         </button>
