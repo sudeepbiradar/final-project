@@ -4,12 +4,13 @@ const passport = require('passport');
 const requireAuth = require('../middleware/auth');
 
 router.get('/google', (req, res, next) => {
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const clientId = (process.env.GOOGLE_CLIENT_ID || '').trim();
+  const clientSecret = (process.env.GOOGLE_CLIENT_SECRET || '').trim();
   if (!clientId || clientId.includes('YOUR_') || !clientSecret || clientSecret.includes('YOUR_')) {
     console.log('>>> [Auth] Google OAuth credentials not set. Falling back to direct single-sign-on login.');
     return res.redirect('/auth/demo-login');
   }
+  console.log(`>>> [Auth] Initiating Google OAuth authentication...`);
   passport.authenticate('google', {
     scope: [
       'profile',

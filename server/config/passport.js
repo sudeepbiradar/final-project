@@ -34,12 +34,19 @@ const defaultCallback = isProd
   ? 'https://livemail-backend.onrender.com/api/auth/google/callback'
   : 'http://localhost:5000/oauth2callback';
 
+const cleanClientId = (process.env.GOOGLE_CLIENT_ID || '').trim();
+const cleanClientSecret = (process.env.GOOGLE_CLIENT_SECRET || '').trim();
+const rawRedirect = (process.env.GOOGLE_REDIRECT_URI || process.env.GOOGLE_CALLBACK_URL || '').trim();
+const finalCallbackURL = rawRedirect || defaultCallback;
+
+console.log(`>>> [Passport Config] Google Strategy initialized with callbackURL: "${finalCallbackURL}"`);
+
 passport.use(
   new GoogleStrategy(
     {
-      clientID: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: process.env.GOOGLE_REDIRECT_URI || process.env.GOOGLE_CALLBACK_URL || defaultCallback,
+      clientID: cleanClientId,
+      clientSecret: cleanClientSecret,
+      callbackURL: finalCallbackURL,
     },
     async (accessToken, refreshToken, profile, done) => {
       const email = (profile.emails?.[0]?.value || 'user@example.com').toLowerCase().trim();
