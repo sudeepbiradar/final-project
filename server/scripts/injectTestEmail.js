@@ -1,6 +1,5 @@
 const mongoose = require('mongoose');
 const Email = require('../models/Email');
-const { io } = require('socket.io-client');
 require('dotenv').config();
 
 async function triggerTestEmail() {
@@ -9,10 +8,16 @@ async function triggerTestEmail() {
         await mongoose.connect(process.env.MONGO_URI);
         console.log('Connected!');
 
+        const User = require('../models/User');
+        const user = await User.findOne();
+        const targetEmail = user ? user.email : 'sudeepbiradar031@gmail.com';
+        console.log(`Target User Email: ${targetEmail}`);
+
         const testEmail = {
+            userEmail: targetEmail,
             gmailId: `test_${Date.now()}`,
             from: 'test-bot@livemail.com',
-            to: 'nandunusgavai@gmail.com',
+            to: targetEmail,
             subject: '🚀 Dashboard Test SUCCESSFUL!',
             content: 'This is a simulated email to verify that your real-time dashboard and categorization are working correctly. If you see this, the system is 100% operational!',
             snippet: 'This is a simulated email to verify that your...',

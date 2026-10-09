@@ -4,6 +4,8 @@
     "description": "LiveMail Classifier - Real-time email categorization with Gmail API and NLP",
     "private": true,
     "scripts": {
+        "start": "npm run dev",
+        "prestart": "npm run predev",
         "install-all": "npm install && cd server && npm install && cd ../client && npm install",
         "server": "cd server && npm start",
         "seed": "npm run server:seed",
@@ -11,7 +13,8 @@
         "server:seed": "cd server && npm run seed",
         "client": "cd client && npm start",
         "build": "cd client && npm run build",
-        "dev": "concurrently \"npm run server:dev\" \"npm run client\"",
+        "predev": "powershell -NoProfile -Command \"try { 3000,5000 | ForEach-Object { $p = $_; Get-NetTCPConnection -LocalPort $p -ErrorAction SilentlyContinue | ForEach-Object { if ($_.OwningProcess -gt 4) { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue } } } } catch {}; exit 0\"",
+        "dev": "concurrently --kill-others-on-fail false \"npm run server:dev\" \"npm run client\"",
         "dev:server": "cd server && npm run dev",
         "dev:client": "cd client && npm start"
     },

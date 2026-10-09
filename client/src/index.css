@@ -1,49 +1,267 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --bg-page: #F8FAFC;
+  --bg-surface: #FFFFFF;
+  --bg-surface-hover: #F1F5F9;
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --border-color: #CBD5E1;
+  --primary-accent: #2563EB;
+  --primary-accent-hover: #1D4ED8;
+  --secondary-accent: #0F766E;
+  --warning-text: #92400E;
+  --warning-bg: #FEF3C7;
+  --warning-border: #FDE68A;
+  --destructive-text: #B91C1C;
+  --destructive-bg: #FEF2F2;
+  --card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+}
+
+.dark {
+  --bg-page: #0B1220;
+  --bg-surface: #111827;
+  --bg-surface-hover: #1E293B;
+  --text-primary: #F8FAFC;
+  --text-secondary: #CBD5E1;
+  --border-color: #1E293B;
+  --primary-accent: #60A5FA;
+  --primary-accent-hover: #3B82F6;
+  --secondary-accent: #14B8A6;
+  --warning-text: #FDE68A;
+  --warning-bg: #78350F;
+  --warning-border: #92400E;
+  --destructive-text: #F87171;
+  --destructive-bg: #451A1A;
+  --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.4);
+}
+
 @layer base {
+  * {
+    box-sizing: border-box;
+  }
+
   body {
-    @apply bg-black text-gray-100;
+    background-color: var(--bg-page);
+    color: var(--text-primary);
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.25s ease, color 0.25s ease;
+  }
+
+  /* Accessible Focus States */
+  :focus-visible {
+    outline: 2px solid var(--primary-accent);
+    outline-offset: 2px;
   }
 }
 
-/* Custom Scrollbar for Dark Theme */
+/* ─── Custom Scrollbar ─────────────────────────────────────── */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #000000;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1f2937;
-  border-radius: 10px;
+  background: #cbd5e1;
+  border-radius: 99px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #374151;
+  background: #94a3b8;
 }
 
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* ─── Glass Morphism ───────────────────────────────────────── */
 .glass {
-  background: rgba(17, 24, 39, 0.7);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.04);
+}
+
+.dark .glass {
+  background: rgba(17, 24, 39, 0.92);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+}
+
+.glass-light {
+  background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color);
+}
+
+.dark .glass-light {
+  background: rgba(17, 24, 39, 0.80);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+/* ─── Glowing Cards ────────────────────────────────────────── */
+.glowing-card {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .glowing-card:hover {
-  box-shadow: 0 0 20px rgba(59, 130, 246, 0.15);
-  border-color: rgba(59, 130, 246, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.12);
 }
 
-@keyframes pulse-slow {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+.dark .glowing-card:hover {
+  box-shadow: 0 4px 20px rgba(96, 165, 250, 0.15);
 }
 
-.animate-pulse-slow {
-  animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+/* ─── Category Badge Colors ────────────────────────────────── */
+.badge-personal {
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+  border: 1px solid rgba(16, 185, 129, 0.30);
+}
+.dark .badge-personal {
+  background: rgba(16, 185, 129, 0.20);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.40);
+}
+
+.badge-business, .badge-primary {
+  background: rgba(37, 99, 235, 0.12);
+  color: #1d4ed8;
+  border: 1px solid rgba(37, 99, 235, 0.30);
+}
+.dark .badge-business, .dark .badge-primary {
+  background: rgba(96, 165, 250, 0.20);
+  color: #93c5fd;
+  border: 1px solid rgba(96, 165, 250, 0.40);
+}
+
+.badge-finance {
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+  border: 1px solid rgba(245, 158, 11, 0.30);
+}
+.dark .badge-finance {
+  background: rgba(245, 158, 11, 0.20);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.40);
+}
+
+.badge-security {
+  background: rgba(239, 68, 68, 0.12);
+  color: #b91c1c;
+  border: 1px solid rgba(239, 68, 68, 0.30);
+}
+.dark .badge-security {
+  background: rgba(239, 68, 68, 0.20);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.40);
+}
+
+.badge-college {
+  background: rgba(6, 182, 212, 0.12);
+  color: #0e7490;
+  border: 1px solid rgba(6, 182, 212, 0.30);
+}
+.dark .badge-college {
+  background: rgba(6, 182, 212, 0.20);
+  color: #67e8f9;
+  border: 1px solid rgba(6, 182, 212, 0.40);
+}
+
+.badge-promotions {
+  background: rgba(236, 72, 153, 0.12);
+  color: #be185d;
+  border: 1px solid rgba(236, 72, 153, 0.30);
+}
+.dark .badge-promotions {
+  background: rgba(236, 72, 153, 0.20);
+  color: #f472b6;
+  border: 1px solid rgba(236, 72, 153, 0.40);
+}
+
+.badge-spam {
+  background: rgba(244, 63, 94, 0.12);
+  color: #be123c;
+  border: 1px solid rgba(244, 63, 94, 0.30);
+}
+.dark .badge-spam {
+  background: rgba(244, 63, 94, 0.20);
+  color: #fda4af;
+  border: 1px solid rgba(244, 63, 94, 0.40);
+}
+
+.badge-default {
+  background: rgba(107, 114, 128, 0.10);
+  color: #374151;
+  border: 1px solid rgba(107, 114, 128, 0.25);
+}
+.dark .badge-default {
+  background: rgba(148, 163, 184, 0.15);
+  color: #cbd5e1;
+  border: 1px solid rgba(148, 163, 184, 0.30);
+}
+
+/* ─── Touch Target Optimization for Mobile ──────────────────── */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* ─── Shimmer Loading ──────────────────────────────────────── */
+.shimmer {
+  background: linear-gradient(90deg,
+      rgba(0, 0, 0, 0.04) 0%,
+      rgba(0, 0, 0, 0.08) 50%,
+      rgba(0, 0, 0, 0.04) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.dark .shimmer {
+  background: linear-gradient(90deg,
+      rgba(255, 255, 255, 0.03) 0%,
+      rgba(255, 255, 255, 0.08) 50%,
+      rgba(255, 255, 255, 0.03) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* ─── Reduced Motion Accessibility ─────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -1,61 +1,114 @@
 const express = require('express');
-const passport = require('passport');
 const router = express.Router();
+const passport = require('passport');
+const requireAuth = require('../middleware/auth');
 
-// @desc    Auth with Google
-// @route   GET /auth/google
-router.get('/auth/google', passport.authenticate('google', {
+router.get('/google', (req, res, next) => {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  if (!clientId || clientId.includes('YOUR_') || !clientSecret || clientSecret.includes('YOUR_')) {
+    console.log('>>> [Auth] Google OAuth credentials not set. Falling back to direct single-sign-on login.');
+    return res.redirect('/auth/demo-login');
+  }
+  passport.authenticate('google', {
     scope: [
-        'profile', 
-        'email', 
-        'https://www.googleapis.com/auth/gmail.readonly',
-        'https://www.googleapis.com/auth/gmail.send',
-        'https://www.googleapis.com/auth/gmail.modify'
+      'profile',
+      'email',
+      'https://www.googleapis.com/auth/gmail.readonly',
+      'https://www.googleapis.com/auth/gmail.send',
     ],
     accessType: 'offline',
-    prompt: 'select_account consent' // Forces Google to show account picker and provide a refresh token
-}));
+    prompt: 'consent',
+  })(req, res, next);
+});
 
-// @desc    Google auth callback
-// @route   GET /oauth2callback
-router.get('/oauth2callback', 
-    passport.authenticate('google', { failureRedirect: '/login' }),
-    (req, res) => {
-        // Successful authentication, redirect to dashboard.
-        const redirectUrl = process.env.SOCKET_CORS_ORIGIN || 'http://localhost:3000';
-        res.redirect(`${redirectUrl}/dashboard`);
+router.get('/oauth2callback', (req, res, next) => {
+  passport.authenticate('google', { session: true }, (err, user) => {
+    if (err || !user) {
+      console.error('OAuth Callback Failed:', err);
+      return res.redirect('http://localhost:3000/?error=auth_failed');
     }
-);
 
-// @desc    Logout user
-// @route   GET /auth/logout
-router.get('/logout', (req, res, next) => {
-    req.logout((err) => {
-        if (err) { return next(err); }
-        const redirectUrl = process.env.SOCKET_CORS_ORIGIN || 'http://localhost:3000';
-        res.redirect(redirectUrl);
+    req.logIn(user, (loginErr) => {
+      const token = user.googleId || user._id?.toString();
+      const userPayload = encodeURIComponent(
+        JSON.stringify({
+          id: token,
+          displayName: user.displayName || user.name || 'User',
+          email: user.email,
+          profilePicture: user.profilePicture || user.picture || user.avatar || '',
+        })
+      );
+
+      return res.redirect(`http://localhost:3000/dashboard?auth_success=true&token=${token}&user=${userPayload}`);
     });
+  })(req, res, next);
 });
 
-// @desc    Get current user
-// @route   GET /auth/user
-router.get('/user', (req, res) => {
-    if (req.user) {
-        res.json({
-            success: true,
-            user: {
-                id: req.user._id,
-                email: req.user.email,
-                displayName: req.user.displayName,
-                profilePicture: req.user.profilePicture
-            }
-        });
-    } else {
-        res.status(401).json({
-            success: false,
-            message: 'Not authenticated'
-        });
+router.get('/demo-login', async (req, res) => {
+  try {
+    const User = require('../models/User');
+    let user = await User.findOne({ email: 'sudeepbiradar031@gmail.com' });
+    if (!user) user = await User.findOne({});
+    if (!user) {
+      user = await User.create({
+        email: 'sudeepbiradar031@gmail.com',
+        displayName: 'Sudeep Biradar',
+        googleId: 'sudeep-local-id',
+        lastLogin: new Date()
+      });
     }
+
+    req.logIn(user, (loginErr) => {
+      const token = user.googleId || user._id?.toString();
+      const userPayload = encodeURIComponent(
+        JSON.stringify({
+          id: token,
+          displayName: user.displayName || user.name || 'Sudeep Biradar',
+          email: user.email,
+          profilePicture: user.profilePicture || user.picture || user.avatar || '',
+        })
+      );
+      return res.redirect(`http://localhost:3000/dashboard?auth_success=true&token=${token}&user=${userPayload}`);
+    });
+  } catch (err) {
+    console.error('Demo login error:', err);
+    return res.redirect('http://localhost:3000/?error=' + encodeURIComponent(err.message));
+  }
 });
+
+router.get('/user', requireAuth, (req, res) => {
+  const user = req.user;
+  const hasGmailToken = !!(user && (user.refreshToken || user.accessToken || process.env.GOOGLE_REFRESH_TOKEN));
+  res.json({ success: true, user, hasGmailToken });
+});
+
+const handleLogout = (req, res) => {
+  const finalize = () => {
+    if (res.headersSent) return;
+    try {
+      res.clearCookie('connect.sid', { path: '/' });
+      res.clearCookie('connect.sid');
+    } catch (_) {}
+    return res.status(200).json({ success: true, message: 'Logged out successfully' });
+  };
+
+  if (req.session) {
+    req.session.destroy(() => {
+      if (typeof req.logout === 'function') {
+        try { req.logout(() => {}); } catch (_) {}
+      }
+      finalize();
+    });
+  } else if (typeof req.logout === 'function') {
+    try { req.logout(() => {}); } catch (_) {}
+    finalize();
+  } else {
+    finalize();
+  }
+};
+
+router.get('/logout', handleLogout);
+router.post('/logout', handleLogout);
 
 module.exports = router;

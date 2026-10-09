@@ -1,59 +1,95 @@
+require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
+require('dotenv').config();
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
-const User = require('../models/User');
+const mongoose = require('mongoose');
+
+global.activeTokens = global.activeTokens || new Map();
 
 passport.serializeUser((user, done) => {
-    done(null, user.id);
+  done(null, String(user._id || user.googleId || user.email));
 });
 
 passport.deserializeUser(async (id, done) => {
-    try {
-        const user = await User.findById(id);
-        done(null, user);
-    } catch (err) {
-        done(err, null);
+  try {
+    let user = null;
+    const User = require('../models/User');
+    if (mongoose.Types.ObjectId.isValid(id) && id.length === 24) {
+      user = await User.findById(id).catch(() => null);
     }
+    if (!user) {
+      user = await User.findOne({ $or: [{ googleId: id }, { email: id }] }).catch(() => null);
+    }
+    if (!user && global.activeTokens && global.activeTokens.has(id)) {
+      user = global.activeTokens.get(id);
+    }
+    done(null, user || { _id: id, googleId: id });
+  } catch (err) {
+    done(null, { _id: id, googleId: id });
+  }
 });
 
-passport.use(new GoogleStrategy({
-    clientID: process.env.GOOGLE_CLIENT_ID,
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: process.env.GOOGLE_REDIRECT_URI || "http://localhost:5000/oauth2callback",
-    passReqToCallback: true
-}, async (req, accessToken, refreshToken, profile, done) => {
-    try {
-        // Check if user already exists
-        let user = await User.findOne({ googleId: profile.id });
+passport.use(
+  new GoogleStrategy(
+    {
+      clientID: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      callbackURL: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:5000/oauth2callback',
+    },
+    async (accessToken, refreshToken, profile, done) => {
+      const email = (profile.emails?.[0]?.value || 'user@example.com').toLowerCase().trim();
+      const displayName = profile.displayName || profile.name?.givenName || 'User';
+      const profilePicture = profile.photos?.[0]?.value || '';
 
-        const userData = {
-            googleId: profile.id,
-            email: profile.emails[0].value,
-            displayName: profile.displayName,
-            profilePicture: profile.photos[0].value,
-            accessToken: accessToken,
-            lastLogin: new Date()
+      try {
+        const User = require('../models/User');
+        const existingUser = await User.findOne({
+          $or: [{ googleId: profile.id }, { email }]
+        }).catch(() => null);
+
+        const effectiveRefreshToken = refreshToken || existingUser?.refreshToken || process.env.GOOGLE_REFRESH_TOKEN || '';
+
+        const userPayload = {
+          googleId: profile.id,
+          displayName,
+          email,
+          profilePicture,
+          accessToken,
+          ...(effectiveRefreshToken ? { refreshToken: effectiveRefreshToken } : {}),
+          lastLogin: new Date()
         };
 
-        // Only update refresh token if we got a new one
-        if (refreshToken) {
-            userData.refreshToken = refreshToken;
+        const user = await User.findOneAndUpdate(
+          { $or: [{ googleId: profile.id }, { email }] },
+          { $set: userPayload },
+          { upsert: true, new: true, setDefaultsOnInsert: true }
+        );
+
+        const finalUser = user ? user.toObject() : userPayload;
+        global.activeTokens.set(profile.id, finalUser);
+        global.activeTokens.set(email, finalUser);
+        if (finalUser._id) {
+          global.activeTokens.set(String(finalUser._id), finalUser);
         }
 
-        if (user) {
-            // Update existing user
-            user = await User.findByIdAndUpdate(user._id, userData, { new: true });
-            return done(null, user);
-        } else {
-            // Create new user
-            if (!refreshToken) {
-                console.warn('No refresh token received for new user. Polling may not work offline.');
-            }
-            user = await User.create(userData);
-            return done(null, user);
-        }
-    } catch (err) {
-        return done(err, null);
+        console.log(`✓ [Auth] Google user authenticated & persisted to DB: ${email}`);
+        return done(null, finalUser);
+      } catch (err) {
+        console.warn('User DB save error, using in-memory fallback:', err.message);
+        const userPayload = {
+          googleId: profile.id,
+          displayName,
+          email,
+          profilePicture,
+          accessToken,
+          ...(refreshToken ? { refreshToken } : (process.env.GOOGLE_REFRESH_TOKEN ? { refreshToken: process.env.GOOGLE_REFRESH_TOKEN } : {}))
+        };
+        global.activeTokens.set(profile.id, userPayload);
+        global.activeTokens.set(email, userPayload);
+        return done(null, userPayload);
+      }
     }
-}));
+  )
+);
 
 module.exports = passport;

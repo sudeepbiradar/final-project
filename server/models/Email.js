@@ -1,25 +1,88 @@
 const mongoose = require('mongoose');
 
+const AttachmentSchema = new mongoose.Schema({
+    filename: {
+        type: String,
+        default: 'attachment'
+    },
+    mimeType: {
+        type: String,
+        default: 'application/octet-stream'
+    },
+    size: {
+        type: Number,
+        default: 0
+    },
+    attachmentId: {
+        type: String,
+        default: ''
+    }
+}, { _id: false });
+
+const ReminderSchema = new mongoose.Schema({
+    type: {
+        type: String,
+        enum: ['date', 'time', 'deadline', 'meeting', 'task'],
+        required: true
+    },
+    text: {
+        type: String,
+        required: true
+    }
+}, { _id: false });
+
 const EmailSchema = new mongoose.Schema({
     // Owner of the email
     userEmail: {
         type: String,
-        required: true,
+        default: 'user@example.com',
+        index: true
+    },
+    // ID of the specific connected account this email belongs to
+    accountId: {
+        type: String,
         index: true
     },
 
-    // Gmail message ID
+    // Gmail message ID or unique tracking ID
     gmailId: {
         type: String,
-        required: true
+        required: true,
+        default: () => 'mail-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7)
+    },
+    gmailMessageId: {
+        type: String,
+        index: true
     },
 
-    // Email headers
+    // Thread ID
+    threadId: {
+        type: String,
+        default: ''
+    },
+
+    // Email headers & parties
     from: {
         type: String,
-        required: true
+        default: 'Unknown Sender'
+    },
+    fromName: {
+        type: String,
+        default: ''
+    },
+    fromAddress: {
+        type: String,
+        default: ''
     },
     to: {
+        type: String,
+        default: ''
+    },
+    cc: {
+        type: String,
+        default: ''
+    },
+    bcc: {
         type: String,
         default: ''
     },
@@ -28,7 +91,7 @@ const EmailSchema = new mongoose.Schema({
         default: 'No Subject'
     },
 
-    // Email content
+    // Complete Email content
     content: {
         type: String,
         default: ''
@@ -45,19 +108,146 @@ const EmailSchema = new mongoose.Schema({
         type: String,
         default: ''
     },
+    bodyText: {
+        type: String,
+        default: ''
+    },
+    bodyHtml: {
+        type: String,
+        default: ''
+    },
 
-    // Classification results
+    // Classification & Topic results
     category: {
         type: String,
-        enum: ['Personal', 'Business', 'Finance', 'Security', 'Work', 'College/School', 'Promotion', 'Uncategorized'],
-        required: true,
-        default: 'Uncategorized'
+        default: 'Primary'
+    },
+    topic: {
+        type: String,
+        default: 'General'
+    },
+    intent: {
+        type: String,
+        default: 'Information'
+    },
+    requiresAction: {
+        type: Boolean,
+        default: false
+    },
+    requiredAction: {
+        type: String,
+        default: ''
+    },
+    actionDescription: {
+        type: String,
+        default: ''
+    },
+    deadline: {
+        type: String,
+        default: ''
     },
     confidence: {
         type: Number,
-        default: 0,
+        default: 0.85,
         min: 0,
         max: 1
+    },
+    classificationConfidence: {
+        type: Number,
+        default: 0.85,
+        min: 0,
+        max: 1
+    },
+    classificationReason: {
+        type: String,
+        default: ''
+    },
+    aiSummary: {
+        type: String,
+        default: ''
+    },
+
+    // Priority & Importance
+    priority: {
+        type: String,
+        default: 'Normal'
+    },
+    importanceScore: {
+        type: Number,
+        default: 50,
+        min: 0,
+        max: 100
+    },
+
+    // Sentiment Analysis
+    sentiment: {
+        type: String,
+        enum: ['Positive', 'Neutral', 'Negative'],
+        default: 'Neutral'
+    },
+    sentimentScore: {
+        type: Number,
+        default: 0,
+        min: -1,
+        max: 1
+    },
+
+    // Keywords & Key Phrases
+    keywords: [{
+        type: String
+    }],
+    keywordScores: [{
+        word: { type: String },
+        score: { type: Number }
+    }],
+    keyPhrases: [{
+        type: String
+    }],
+
+    // Extracted Named Entities
+    entities: [{
+        type: { type: String },
+        text: { type: String }
+    }],
+
+    // Status flags
+    isRead: {
+        type: Boolean,
+        default: false
+    },
+    isStarred: {
+        type: Boolean,
+        default: false
+    },
+    isArchived: {
+        type: Boolean,
+        default: false
+    },
+    isTrash: {
+        type: Boolean,
+        default: false
+    },
+    isImportant: {
+        type: Boolean,
+        default: false
+    },
+    isSpam: {
+        type: Boolean,
+        default: false
+    },
+
+    // Category correction tracking (Adaptive learning)
+    originalCategory: {
+        type: String,
+        default: ''
+    },
+    categoryCorrectedByUser: {
+        type: Boolean,
+        default: false
+    },
+    correctionReason: {
+        type: String,
+        default: ''
     },
 
     // Timestamps
@@ -86,32 +276,37 @@ const EmailSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    attachments: [AttachmentSchema],
 
-    // Thread ID
-    threadId: {
-        type: String,
-        default: ''
-    }
+    // Extracted reminders / dates / times / tasks
+    reminders: [ReminderSchema]
 }, {
     timestamps: true
 });
 
-// Compound index for unique emails per user
+// Compound unique index for emails per user to strictly prevent duplicates
 EmailSchema.index({ userEmail: 1, gmailId: 1 }, { unique: true });
 
-// Index for efficient querying by received date
+// Query indexes for high performance
 EmailSchema.index({ receivedAt: -1 });
 EmailSchema.index({ userEmail: 1, receivedAt: -1 });
-EmailSchema.index({ category: 1 });
+EmailSchema.index({ userEmail: 1, category: 1 });
+EmailSchema.index({ userEmail: 1, isRead: 1 });
+EmailSchema.index({ userEmail: 1, isStarred: 1 });
+EmailSchema.index({ userEmail: 1, isArchived: 1 });
+EmailSchema.index({ userEmail: 1, isTrash: 1 });
+EmailSchema.index({ threadId: 1 });
 
 // Static method to find recent emails
-EmailSchema.statics.findRecent = function (limit = 20) {
+EmailSchema.statics.findRecent = function (limit = 50) {
     return this.find().sort({ receivedAt: -1 }).limit(limit);
 };
 
 // Static method to get category statistics
-EmailSchema.statics.getCategoryStats = async function () {
+EmailSchema.statics.getCategoryStats = async function (userEmail) {
+    const match = userEmail ? { userEmail } : {};
     const stats = await this.aggregate([
+        { $match: match },
         {
             $group: {
                 _id: '$category',
@@ -127,10 +322,34 @@ EmailSchema.statics.getCategoryStats = async function () {
         }
     ]);
 
-    // Convert to a key-value object
-    const result = {};
+    const result = {
+        Primary: 0,
+        Personal: 0,
+        Finance: 0,
+        'College / Student': 0,
+        Security: 0,
+        Spam: 0,
+        'Other / Uncategorized': 0
+    };
+
+    const normalizeCat = (c) => {
+        if (!c) return 'Other / Uncategorized';
+        const str = String(c).trim();
+        if (str === 'Business') return 'Primary';
+        if (str === 'School / College') return 'College / Student';
+        if (str === 'Uncategorized' || str === 'Other') return 'Other / Uncategorized';
+        return str;
+    };
+
     stats.forEach(stat => {
-        result[stat.category] = stat.count;
+        if (stat.category) {
+            const normalized = normalizeCat(stat.category);
+            if (result[normalized] !== undefined) {
+                result[normalized] = (result[normalized] || 0) + stat.count;
+            } else {
+                result['Other / Uncategorized'] = (result['Other / Uncategorized'] || 0) + stat.count;
+            }
+        }
     });
 
     return result;

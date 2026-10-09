@@ -1,0 +1,2951 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Live Mail Filtering System — Smart Categorization & Live Notifications</title>
+<meta name="description" content="Automated real-time email keyword analysis, categorized mailboxes, floating top-right popup notifications, multi-sound audio engine, and live activity feed." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<style>
+/* ─────────────────────────────────────────────────────────────────────────────
+   1. DESIGN SYSTEM & CSS TOKENS (PREMIUM WHITE + SLATE NAVY + HARMONIOUS PALETTE)
+───────────────────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --white:        #ffffff;
+  --bg-page:      #f8fafc;
+  --bg-card:      #ffffff;
+  --bg-subtle:    #f1f5f9;
+  --border:       #e2e8f0;
+  --border-md:    #cbd5e1;
+  --navy:         #0f172a;
+  --slate:        #334155;
+  --muted:        #64748b;
+  --light:        #94a3b8;
+  
+  --blue:         #2563eb;
+  --blue-hover:   #1d4ed8;
+  --blue-light:   #eff6ff;
+  --blue-border:  #bfdbfe;
+  
+  --green:        #059669;
+  --green-light:  #ecfdf5;
+  --green-border: #a7f3d0;
+  
+  --amber:        #d97706;
+  --amber-light:  #fffbeb;
+  --amber-border: #fde68a;
+  
+  --red:          #dc2626;
+  --red-light:    #fef2f2;
+  --red-border:   #fecaca;
+  
+  --purple:       #7c3aed;
+  --purple-light: #faf5ff;
+  --purple-border:#e9d5ff;
+  
+  --sidebar-w:    260px;
+  --header-h:     68px;
+  --radius-sm:    8px;
+  --radius:       12px;
+  --radius-lg:    18px;
+  --radius-xl:    24px;
+  
+  --shadow-sm:    0 1px 3px rgba(15,23,42,.05);
+  --shadow:       0 4px 20px rgba(15,23,42,.08), 0 1px 4px rgba(15,23,42,.03);
+  --shadow-lg:    0 16px 40px rgba(15,23,42,.12);
+  --shadow-xl:    0 25px 60px rgba(15,23,42,.18);
+}
+
+html, body {
+  height: 100%;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: var(--bg-page);
+  color: var(--navy);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, .font-heading {
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+}
+
+#app { display: flex; height: 100vh; overflow: hidden; }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   2. TOP-RIGHT NOTIFICATION CONTAINER (MOUNTED DIRECTLY ON <body>)
+   Rules: position fixed, top 24px, right 24px, z-index 999999, never hidden
+───────────────────────────────────────────────────────────────────────────── */
+#notification-toast-container {
+  position: fixed !important;
+  top: 24px !important;
+  right: 24px !important;
+  z-index: 999999 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+  pointer-events: none !important;
+  max-width: 400px !important;
+  width: calc(100% - 48px) !important;
+}
+
+.mail-notif-popup-card {
+  background: #ffffff !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: 0 20px 45px rgba(15,23,42,.16), 0 4px 12px rgba(15,23,42,.08) !important;
+  padding: 16px !important;
+  pointer-events: auto !important;
+  position: relative !important;
+  overflow: hidden !important;
+  border-top: 4px solid var(--blue) !important;
+  transition: transform .2s ease, box-shadow .2s ease !important;
+  animation: notif-slide-bounce-in .38s cubic-bezier(.175, .885, .32, 1.275) both !important;
+}
+.mail-notif-popup-card:hover {
+  box-shadow: 0 24px 50px rgba(15,23,42,.22) !important;
+  transform: translateY(-2px) !important;
+}
+.mail-notif-popup-card.security-alert {
+  border-top-color: var(--red) !important;
+  background: #fffcfc !important;
+}
+.mail-notif-popup-card.finance-alert {
+  border-top-color: var(--amber) !important;
+}
+.mail-notif-popup-card.closing {
+  animation: notif-slide-out-right .28s ease both !important;
+}
+
+@keyframes notif-slide-bounce-in {
+  0% {
+    opacity: 0;
+    transform: translateX(120%) scale(0.92);
+  }
+  70% {
+    opacity: 1;
+    transform: translateX(-4px) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes notif-slide-out-right {
+  0% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(120%) scale(0.9);
+  }
+}
+
+.npc-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.npc-cat-icon-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  flex-shrink: 0;
+}
+.npc-header-text {
+  flex: 1;
+  min-width: 0;
+}
+.npc-category-tag {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+}
+.npc-sender-name {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--navy);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.npc-close-icon {
+  background: none;
+  border: none;
+  font-size: 15px;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+  border-radius: 4px;
+  transition: all .15s;
+}
+.npc-close-icon:hover {
+  background: var(--bg-subtle);
+  color: var(--navy);
+}
+
+.npc-subject-line {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--navy);
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.npc-preview-body {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 10px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.npc-matched-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--slate);
+  margin-bottom: 12px;
+  background: var(--bg-subtle);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+}
+.npc-matched-meta-row strong {
+  color: var(--blue);
+}
+.npc-timestamp {
+  font-size: 10px;
+  color: var(--light);
+  font-weight: 600;
+}
+
+.npc-actions-group {
+  display: flex;
+  gap: 6px;
+}
+.npc-actions-group button {
+  flex: 1;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 7px 0;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-family: inherit;
+  border: none;
+  transition: all .15s;
+}
+.btn-npc-view {
+  background: var(--blue);
+  color: white;
+}
+.btn-npc-view:hover {
+  background: var(--blue-hover);
+}
+.btn-npc-read {
+  background: var(--green-light);
+  color: var(--green);
+  border: 1px solid var(--green-border) !important;
+}
+.btn-npc-read:hover {
+  background: #d1fae5;
+}
+.btn-npc-dismiss {
+  background: var(--bg-subtle);
+  color: var(--slate);
+  border: 1px solid var(--border) !important;
+}
+.btn-npc-dismiss:hover {
+  background: var(--border);
+  color: var(--navy);
+}
+
+.npc-countdown-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: var(--blue);
+  width: 100%;
+  transform-origin: left;
+  animation: countdown-timer 8s linear forwards;
+}
+.mail-notif-popup-card.paused .npc-countdown-bar {
+  animation-play-state: paused;
+}
+@keyframes countdown-timer {
+  from { width: 100%; }
+  to   { width: 0%; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   3. SIDEBAR NAVIGATION
+───────────────────────────────────────────────────────────────────────────── */
+#sidebar {
+  width: var(--sidebar-w);
+  background: var(--white);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  flex-shrink: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  transition: transform .25s cubic-bezier(.2,.9,.3,1);
+  z-index: 100;
+}
+#sidebar::-webkit-scrollbar { width: 4px; }
+#sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+.sidebar-brand-block {
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.brand-icon-box {
+  width: 40px; height: 40px;
+  background: linear-gradient(135deg, var(--blue), #3b82f6);
+  border-radius: var(--radius);
+  display: flex; align-items: center; justify-content: center;
+  color: white; font-size: 20px;
+  box-shadow: 0 4px 14px rgba(37,99,235,.25);
+  flex-shrink: 0;
+}
+.brand-text-main { font-size: 15px; font-weight: 800; color: var(--navy); line-height: 1.2; }
+.brand-text-sub { font-size: 11px; font-weight: 600; color: var(--blue); }
+
+.sidebar-action-wrap { margin: 14px 14px 6px; }
+.btn-compose-prime {
+  width: 100%;
+  background: var(--blue);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  padding: 11px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 14px rgba(37,99,235,.25);
+  transition: all .2s;
+  font-family: inherit;
+}
+.btn-compose-prime:hover { background: var(--blue-hover); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(37,99,235,.35); }
+
+.sidebar-group-label {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--light);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  padding: 14px 20px 4px;
+}
+
+.sidebar-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  margin: 2px 10px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all .18s;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--slate);
+  user-select: none;
+  position: relative;
+}
+.sidebar-nav-item:hover { background: var(--bg-subtle); color: var(--navy); }
+.sidebar-nav-item.active {
+  background: var(--blue-light);
+  color: var(--blue);
+  font-weight: 700;
+}
+.sidebar-nav-item.sidebar-glow-pulse {
+  animation: sidebar-cat-glow 1.4s ease;
+}
+@keyframes sidebar-cat-glow {
+  0%   { transform: scale(1); background: rgba(37,99,235,.25); box-shadow: 0 0 14px rgba(37,99,235,.4); }
+  50%  { transform: scale(1.03); background: rgba(37,99,235,.18); }
+  100% { transform: scale(1); }
+}
+
+.nav-icon-span { font-size: 16px; width: 22px; text-align: center; flex-shrink: 0; }
+.nav-text-span { flex: 1; }
+.nav-count-badge {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 99px;
+  min-width: 20px;
+  text-align: center;
+  line-height: 1.3;
+}
+.nav-count-badge.all { background: var(--navy); color: white; }
+.nav-count-badge.personal { background: var(--green-light); color: var(--green); border: 1px solid var(--green-border); }
+.nav-count-badge.business { background: var(--blue-light); color: var(--blue); border: 1px solid var(--blue-border); }
+.nav-count-badge.finance { background: var(--amber-light); color: var(--amber); border: 1px solid var(--amber-border); }
+.nav-count-badge.security { background: var(--red-light); color: var(--red); border: 1px solid var(--red-border); }
+.nav-count-badge.school { background: var(--purple-light); color: var(--purple); border: 1px solid var(--purple-border); }
+.nav-count-badge.spam { background: var(--red-light); color: var(--red); border: 1px solid var(--red-border); }
+.nav-count-badge.uncateg { background: var(--bg-subtle); color: var(--muted); border: 1px solid var(--border); }
+
+.sidebar-footer-info {
+  padding: 14px 18px;
+  margin-top: auto;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--white);
+}
+.status-live-beacon {
+  width: 9px; height: 9px;
+  background: var(--green);
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px rgba(5,150,105,.2);
+  animation: beacon-pulse 2s infinite;
+}
+@keyframes beacon-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: .6; transform: scale(.85); }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   4. MAIN CONTAINER & TOPBAR
+───────────────────────────────────────────────────────────────────────────── */
+#main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+#topbar {
+  height: var(--header-h);
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 24px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 50;
+}
+.topbar-title-wrap .tt-title { font-size: 17px; font-weight: 800; color: var(--navy); }
+.topbar-title-wrap .tt-sub { font-size: 12px; font-weight: 500; color: var(--muted); }
+
+#search-shell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 14px;
+  width: 290px;
+  margin-left: auto;
+  transition: all .2s;
+}
+#search-shell:focus-within {
+  background: white;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(37,99,235,.15);
+}
+#search-shell input {
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  color: var(--navy);
+  outline: none;
+  width: 100%;
+  font-family: inherit;
+}
+#search-shell input::placeholder { color: var(--light); }
+
+.topbar-btn-pill {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--slate);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all .15s;
+  font-family: inherit;
+  position: relative;
+}
+.topbar-btn-pill:hover { background: var(--bg-subtle); border-color: var(--border-md); color: var(--navy); }
+.topbar-btn-pill.primary { background: var(--blue); color: white; border: none; }
+.topbar-btn-pill.primary:hover { background: var(--blue-hover); }
+
+/* Bell Pulse Animation */
+.bell-pulse-anim {
+  animation: bell-bounce-pulse .8s ease;
+}
+@keyframes bell-bounce-pulse {
+  0%   { transform: rotate(0); }
+  20%  { transform: rotate(15deg) scale(1.15); }
+  40%  { transform: rotate(-15deg) scale(1.15); }
+  60%  { transform: rotate(10deg); }
+  80%  { transform: rotate(-5deg); }
+  100% { transform: rotate(0) scale(1); }
+}
+
+.bell-alert-badge {
+  position: absolute;
+  top: -4px; right: -4px;
+  background: var(--red);
+  color: white;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 99px;
+  border: 2px solid white;
+}
+
+/* ── BELL DROPDOWN ── */
+#bell-dropdown-card {
+  display: none;
+  position: absolute;
+  top: calc(var(--header-h) + 6px);
+  right: 24px;
+  width: 370px;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  z-index: 1000;
+  overflow: hidden;
+  animation: dropdown-pop .2s ease both;
+}
+#bell-dropdown-card.open { display: block; }
+@keyframes dropdown-pop {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.bdd-head {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-subtle);
+}
+.bdd-head h4 { font-size: 13px; font-weight: 800; color: var(--navy); }
+.bdd-head button { background: none; border: none; font-size: 11px; font-weight: 700; color: var(--blue); cursor: pointer; }
+.bdd-list { max-height: 320px; overflow-y: auto; }
+.bdd-item {
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  transition: background .15s;
+}
+.bdd-item:hover { background: var(--bg-subtle); }
+.bdd-item:last-child { border-bottom: none; }
+.bdd-empty { padding: 36px 18px; text-align: center; color: var(--muted); font-size: 12px; }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   5. PAGES CONTENT & DASHBOARD
+───────────────────────────────────────────────────────────────────────────── */
+#content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+#content::-webkit-scrollbar { width: 6px; }
+#content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+.page-tab { display: none; }
+.page-tab.active { display: block; animation: tab-fade .2s ease; }
+@keyframes tab-fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ── STATS TILES ── */
+.stats-grid-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.stat-tile {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+  transition: all .2s;
+}
+.stat-tile:hover { box-shadow: var(--shadow); border-color: var(--border-md); }
+.stat-tile .st-label { font-size: 11px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+.stat-tile .st-value { font-size: 32px; font-weight: 900; color: var(--navy); line-height: 1; }
+.stat-tile .st-badge { font-size: 11px; font-weight: 700; margin-top: 6px; display: flex; align-items: center; gap: 4px; }
+
+.two-col-layout { display: grid; grid-template-columns: 1fr 360px; gap: 20px; }
+
+/* ── LIVE ACTIVITY CARD ── */
+.card-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+.cp-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: white;
+}
+.cp-header .cp-title { font-size: 14px; font-weight: 800; color: var(--navy); }
+.cp-header .cp-sub { font-size: 11px; font-weight: 500; color: var(--muted); margin-top: 1px; }
+
+.live-radar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.radar-beacon {
+  position: relative;
+  width: 14px; height: 14px;
+}
+.rb-core {
+  width: 10px; height: 10px;
+  background: var(--blue);
+  border-radius: 50%;
+  position: absolute;
+  top: 2px; left: 2px;
+}
+.rb-ring {
+  width: 14px; height: 14px;
+  border: 2px solid var(--blue);
+  border-radius: 50%;
+  position: absolute;
+  top: 0; left: 0;
+  animation: radar-pulse 1.8s ease-out infinite;
+}
+@keyframes radar-pulse {
+  0%   { transform: scale(1); opacity: .8; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+
+#live-activity-list { max-height: 420px; overflow-y: auto; }
+#live-activity-list::-webkit-scrollbar { width: 4px; }
+#live-activity-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+.activity-row-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  animation: row-slide-up .35s ease both;
+  transition: background .15s;
+}
+.activity-row-item:hover { background: var(--bg-subtle); }
+.activity-row-item:last-child { border-bottom: none; }
+@keyframes row-slide-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.act-badge-box {
+  width: 38px; height: 38px;
+  border-radius: var(--radius);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px;
+  flex-shrink: 0;
+}
+.act-info-block { flex: 1; min-width: 0; }
+.act-sender-name { font-size: 13px; font-weight: 700; color: var(--navy); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.act-sorting-text { font-size: 11px; color: var(--slate); margin-top: 2px; }
+.act-kw-highlight { font-weight: 700; color: var(--blue); background: var(--blue-light); padding: 1px 6px; border-radius: 4px; }
+.act-meta-box { text-align: right; flex-shrink: 0; }
+.act-time-stamp { font-size: 10px; color: var(--light); }
+.act-conf-pill {
+  font-size: 10px; font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 99px;
+  background: var(--green-light);
+  color: var(--green);
+  border: 1px solid var(--green-border);
+  margin-top: 3px;
+  display: inline-block;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   6. EMAIL LIST & CARDS
+───────────────────────────────────────────────────────────────────────────── */
+.section-banner-strip {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: var(--shadow-sm);
+}
+.sbs-left { display: flex; align-items: center; gap: 12px; }
+.sbs-icon { font-size: 26px; }
+.sbs-title { font-size: 16px; font-weight: 900; color: var(--navy); }
+.sbs-count { font-size: 12px; font-weight: 600; color: var(--muted); }
+
+.list-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.list-toolbar-actions select {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--slate);
+  font-family: inherit;
+  cursor: pointer;
+  outline: none;
+}
+.list-toolbar-actions button {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--slate);
+  font-family: inherit;
+  cursor: pointer;
+  transition: all .15s;
+}
+.list-toolbar-actions button:hover { background: var(--bg-subtle); color: var(--navy); }
+
+#email-cards-container { display: flex; flex-direction: column; gap: 8px; }
+
+.email-row-card {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  cursor: pointer;
+  transition: all .18s;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  animation: card-appear .25s ease both;
+}
+.email-row-card:hover {
+  box-shadow: var(--shadow);
+  border-color: var(--border-md);
+  transform: translateY(-1px);
+}
+.email-row-card.unread {
+  border-left: 4px solid var(--blue);
+}
+@keyframes card-appear {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.erc-avatar {
+  width: 42px; height: 42px;
+  border-radius: var(--radius);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 900;
+  color: white;
+  flex-shrink: 0;
+  text-transform: uppercase;
+}
+.erc-body { flex: 1; min-width: 0; }
+.erc-top { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap; }
+.erc-sender { font-size: 13px; font-weight: 800; color: var(--navy); }
+.erc-cat-chip {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  padding: 2px 8px;
+  border-radius: 99px;
+  white-space: nowrap;
+}
+.erc-subject { font-size: 13px; font-weight: 600; color: var(--navy); margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.email-row-card.unread .erc-subject { font-weight: 800; }
+.erc-snippet { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.erc-right { text-align: right; flex-shrink: 0; }
+.erc-time { font-size: 11px; color: var(--light); font-weight: 600; white-space: nowrap; }
+.erc-hover-btns {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+  justify-content: flex-end;
+  opacity: 0;
+  transition: opacity .15s;
+}
+.email-row-card:hover .erc-hover-btns { opacity: 1; }
+.erc-hover-btns button {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--slate);
+  font-family: inherit;
+  transition: all .15s;
+}
+.erc-hover-btns button:hover { background: var(--border); color: var(--navy); }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   7. NOTIFICATION & SOUND CONTROLS PAGE
+───────────────────────────────────────────────────────────────────────────── */
+.settings-section-card {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  margin-bottom: 20px;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.ssc-header {
+  padding: 16px 20px;
+  background: var(--bg-subtle);
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--navy);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.ssc-row {
+  display: flex;
+  align-items: center;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  gap: 14px;
+}
+.ssc-row:last-child { border-bottom: none; }
+.ssc-row .r-icon { font-size: 20px; width: 26px; text-align: center; }
+.ssc-row .r-info { flex: 1; }
+.ssc-row .r-label { font-size: 13px; font-weight: 700; color: var(--navy); }
+.ssc-row .r-desc  { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+.cat-config-grid-row {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: 140px 1fr 1fr 120px 140px;
+  align-items: center;
+  gap: 16px;
+}
+.cat-config-grid-row:last-child { border-bottom: none; }
+.cat-config-grid-row:hover { background: #fafcff; }
+
+/* Custom Switch */
+.switch-control {
+  position: relative;
+  width: 44px; height: 24px;
+  flex-shrink: 0;
+}
+.switch-control input { display: none; }
+.switch-slider {
+  position: absolute; inset: 0;
+  background: var(--border-md);
+  border-radius: 99px;
+  cursor: pointer;
+  transition: background .2s;
+}
+.switch-control input:checked + .switch-slider { background: var(--blue); }
+.switch-slider::after {
+  content: '';
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 18px; height: 18px;
+  background: white;
+  border-radius: 50%;
+  transition: transform .2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,.2);
+}
+.switch-control input:checked + .switch-slider::after { transform: translateX(20px); }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   8. EMAIL DETAIL MODAL & "WHY THIS EMAIL" PANEL
+───────────────────────────────────────────────────────────────────────────── */
+.modal-overlay-backdrop {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(15,23,42,.45);
+  backdrop-filter: blur(4px);
+  z-index: 9000;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.modal-overlay-backdrop.open { display: flex; }
+.modal-dialog-frame {
+  background: white;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  width: 100%;
+  max-width: 780px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  animation: dialog-pop .2s ease both;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+@keyframes dialog-pop { from { opacity: 0; transform: scale(.96) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+
+.mdf-header {
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  background: white;
+}
+.mdf-header .mh-info { flex: 1; min-width: 0; }
+.mdf-header .mh-subj { font-size: 18px; font-weight: 900; color: var(--navy); line-height: 1.3; margin-bottom: 6px; }
+.mdf-header .mh-sender { font-size: 12px; color: var(--muted); }
+.mdf-header .mh-sender strong { color: var(--navy); font-weight: 700; }
+.mdf-close-btn {
+  width: 32px; height: 32px;
+  border: none; background: var(--bg-subtle);
+  border-radius: var(--radius); cursor: pointer;
+  font-size: 18px; color: var(--muted);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: all .15s;
+}
+.mdf-close-btn:hover { background: var(--border); color: var(--navy); }
+
+.mdf-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  background: white;
+}
+.mdf-body::-webkit-scrollbar { width: 5px; }
+.mdf-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+/* ── "WHY THIS EMAIL" EXPLAINABLE SORTING BOX ── */
+.why-classification-box {
+  background: var(--blue-light);
+  border: 1px solid var(--blue-border);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  margin-bottom: 20px;
+}
+.wcb-head {
+  font-size: 12px;
+  font-weight: 900;
+  color: var(--blue);
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.wcb-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.wcb-cell { font-size: 12px; }
+.wcb-cell .wk { font-weight: 700; color: var(--slate); margin-bottom: 2px; }
+.wcb-cell .wv { font-weight: 800; color: var(--navy); }
+.wcb-kw-tag {
+  display: inline-block;
+  background: var(--blue);
+  color: white;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 99px;
+}
+.wcb-conf-tag {
+  display: inline-block;
+  background: var(--green);
+  color: white;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 99px;
+}
+.wcb-explanation-text {
+  font-size: 12px;
+  color: var(--slate);
+  background: white;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--blue-border);
+  margin-bottom: 14px;
+  line-height: 1.5;
+}
+.wcb-action-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.wcb-action-bar select {
+  background: white;
+  border: 1px solid var(--blue-border);
+  border-radius: var(--radius);
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy);
+  font-family: inherit;
+  outline: none;
+}
+.wcb-action-bar button {
+  background: white;
+  border: 1px solid var(--blue-border);
+  border-radius: var(--radius);
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--blue);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all .15s;
+}
+.wcb-action-bar button:hover { background: var(--blue); color: white; }
+
+.mdf-email-content {
+  background: var(--bg-page);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  font-size: 14px;
+  color: var(--navy);
+  line-height: 1.8;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.mdf-footer {
+  padding: 14px 24px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  background: var(--bg-subtle);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   9. COMPOSE MODAL & TOAST
+───────────────────────────────────────────────────────────────────────────── */
+.compose-box-frame { max-width: 580px; }
+.cbf-row {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  padding: 10px 20px;
+}
+.cbf-row label { font-size: 12px; font-weight: 700; color: var(--muted); width: 60px; }
+.cbf-row input { flex: 1; border: none; background: transparent; font-size: 13px; color: var(--navy); font-family: inherit; outline: none; }
+.cbf-textarea { padding: 16px 20px; }
+.cbf-textarea textarea { width: 100%; min-height: 180px; border: none; background: transparent; font-size: 13px; color: var(--navy); font-family: inherit; outline: none; resize: none; }
+
+.system-toast-pill {
+  display: none;
+  position: fixed;
+  bottom: 24px; left: 50%;
+  transform: translateX(-50%);
+  background: var(--navy);
+  color: white;
+  padding: 10px 22px;
+  border-radius: 99px;
+  font-size: 13px;
+  font-weight: 700;
+  z-index: 999999;
+  box-shadow: var(--shadow-lg);
+  animation: toast-fly .25s ease;
+}
+@keyframes toast-fly { from { opacity: 0; transform: translateX(-50%) translateY(12px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+
+/* Mobile */
+.mobile-hamburger {
+  display: none;
+  width: 36px; height: 36px;
+  border: 1px solid var(--border);
+  background: white;
+  border-radius: var(--radius);
+  align-items: center; justify-content: center;
+  cursor: pointer; font-size: 18px; color: var(--slate);
+}
+#mobile-shade {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(15,23,42,.4);
+  z-index: 90;
+}
+#mobile-shade.open { display: block; }
+
+@media (max-width: 900px) {
+  .two-col-layout { grid-template-columns: 1fr; }
+  .stats-grid-row { grid-template-columns: repeat(2, 1fr); }
+  .cat-config-grid-row { grid-template-columns: 1fr 1fr; gap: 10px; }
+}
+@media (max-width: 720px) {
+  #sidebar {
+    position: fixed; left: 0; top: 0; bottom: 0;
+    transform: translateX(-100%);
+  }
+  #sidebar.open { transform: translateX(0); }
+  .mobile-hamburger { display: flex; }
+  #search-shell { display: none; }
+  .stats-grid-row { grid-template-columns: 1fr; }
+  #notification-toast-container { left: 14px !important; right: 14px !important; max-width: 100% !important; width: calc(100% - 28px) !important; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═════════════════════════════════════════════════════════════════════════
+     NOTIFICATION CONTAINER (MOUNTED DIRECTLY AT ROOT OF <body>)
+═════════════════════════════════════════════════════════════════════════ -->
+<div id="notification-toast-container"></div>
+
+<div id="app">
+  <!-- ═════════════════════════════════════════════════════════════════════════
+       LEFT SIDEBAR NAVIGATION
+  ═════════════════════════════════════════════════════════════════════════ -->
+  <nav id="sidebar">
+    <div class="sidebar-brand-block">
+      <div class="brand-icon-box">✉️</div>
+      <div>
+        <div class="brand-text-main">Live Mail</div>
+        <div class="brand-text-sub">Filtering System</div>
+      </div>
+    </div>
+
+    <div class="sidebar-action-wrap">
+      <button class="btn-compose-prime" onclick="openComposeModal()">
+        <span>✏️</span> Compose Email
+      </button>
+    </div>
+
+    <div class="sidebar-group-label">Main Navigation</div>
+    <div class="sidebar-nav-item active" id="nav-dashboard" onclick="switchView('dashboard')">
+      <span class="nav-icon-span">📊</span>
+      <span class="nav-text-span">Dashboard</span>
+    </div>
+    <div class="sidebar-nav-item" id="nav-all" onclick="switchView('all')">
+      <span class="nav-icon-span">📬</span>
+      <span class="nav-text-span">All Mail</span>
+      <span class="nav-count-badge all" id="badge-all">0</span>
+    </div>
+
+    <div class="sidebar-group-label">Category Mail Sections</div>
+    <div class="sidebar-nav-item" id="nav-Personal" onclick="switchView('Personal')">
+      <span class="nav-icon-span">👤</span>
+      <span class="nav-text-span">Personal</span>
+      <span class="nav-count-badge personal" id="badge-Personal">0</span>
+    </div>
+    <div class="sidebar-nav-item" id="nav-Business" onclick="switchView('Business')">
+      <span class="nav-icon-span">💼</span>
+      <span class="nav-text-span">Business</span>
+      <span class="nav-count-badge business" id="badge-Business">0</span>
+    </div>
+    <div class="sidebar-nav-item" id="nav-Finance" onclick="switchView('Finance')">
+      <span class="nav-icon-span">💰</span>
+      <span class="nav-text-span">Finance</span>
+      <span class="nav-count-badge finance" id="badge-Finance">0</span>
+    </div>
+    <div class="sidebar-nav-item" id="nav-Security" onclick="switchView('Security')">
+      <span class="nav-icon-span">🔒</span>
+      <span class="nav-text-span">Security</span>
+      <span class="nav-count-badge security" id="badge-Security">0</span>
+    </div>
+    <div class="sidebar-nav-item" id="nav-School" onclick="switchView('School')">
+      <span class="nav-icon-span">🎓</span>
+      <span class="nav-text-span">School / College</span>
+      <span class="nav-count-badge school" id="badge-School">0</span>
+    </div>
+    <div class="sidebar-nav-item" id="nav-Spam" onclick="switchView('Spam')">
+      <span class="nav-icon-span">🚫</span>
+      <span class="nav-text-span">Spam</span>
+      <span class="nav-count-badge spam" id="badge-Spam">0</span>
+    </div>
+    <div class="sidebar-nav-item" id="nav-Uncategorized" onclick="switchView('Uncategorized')">
+      <span class="nav-icon-span">📂</span>
+      <span class="nav-text-span">Uncategorized</span>
+      <span class="nav-count-badge uncateg" id="badge-Uncategorized">0</span>
+    </div>
+
+    <div class="sidebar-group-label">Configuration & Audio</div>
+    <div class="sidebar-nav-item" id="nav-notifications" onclick="switchView('notifications')">
+      <span class="nav-icon-span">🔔</span>
+      <span class="nav-text-span">Notification & Sounds</span>
+    </div>
+    <div class="sidebar-nav-item" id="nav-rules" onclick="switchView('rules')">
+      <span class="nav-icon-span">⚙️</span>
+      <span class="nav-text-span">Rules & Keywords</span>
+    </div>
+    <div class="sidebar-nav-item" id="nav-settings" onclick="switchView('settings')">
+      <span class="nav-icon-span">🛠️</span>
+      <span class="nav-text-span">Settings</span>
+    </div>
+
+    <div class="sidebar-footer-info">
+      <div class="status-live-beacon"></div>
+      <span style="font-size:11px; font-weight:700; color:var(--slate);">Live Filtering Engine Active</span>
+    </div>
+  </nav>
+
+  <div id="mobile-shade" onclick="closeMobileMenu()"></div>
+
+  <!-- ═════════════════════════════════════════════════════════════════════════
+       MAIN VIEWPORT
+  ═════════════════════════════════════════════════════════════════════════ -->
+  <div id="main">
+    <!-- TOPBAR -->
+    <header id="topbar">
+      <button class="mobile-hamburger" onclick="toggleMobileMenu()">☰</button>
+      <div class="topbar-title-wrap">
+        <div class="tt-title" id="page-title-text">Dashboard</div>
+        <div class="tt-sub" id="page-sub-text">Smart email categorization & real-time popup notifications with audio</div>
+      </div>
+
+      <div id="search-shell">
+        <span style="color:var(--light)">🔍</span>
+        <input type="text" placeholder="Search emails, sender, keyword…" id="global-search-input" oninput="handleSearchFilter()" />
+      </div>
+
+      <button class="topbar-btn-pill" id="global-notif-toggle-btn" onclick="toggleGlobalNotificationsMaster()" title="Global Notification On/Off">
+        <span id="glob-notif-icon">🔔</span>
+        <span id="glob-notif-label">Popups: ON</span>
+      </button>
+
+      <button class="topbar-btn-pill" id="quick-sound-btn" onclick="toggleGlobalSoundQuick()" title="Toggle Sound Chimes">
+        <span id="quick-sound-icon">🔊</span>
+        <span>Sound: ON</span>
+      </button>
+
+      <button class="topbar-btn-pill" onclick="clearAllStoredEmails()" title="Clear all stored emails to keep only new incoming emails">
+        <span>🗑️</span> Clear
+      </button>
+
+      <!-- BELL DROPDOWN BUTTON -->
+      <button class="topbar-btn-pill" onclick="toggleBellCard()" id="bell-btn-element" title="Recent Alerts">
+        <span id="bell-icon-glyph">🔔</span>
+        <span class="bell-alert-badge" id="bell-badge-count">0</span>
+      </button>
+
+      <!-- BELL DROPDOWN CARD -->
+      <div id="bell-dropdown-card">
+        <div class="bdd-head">
+          <h4>Recent Notifications</h4>
+          <button onclick="clearAllRecentAlerts()">Clear All</button>
+        </div>
+        <div class="bdd-list" id="bell-card-feed">
+          <div class="bdd-empty">No unread notifications</div>
+        </div>
+      </div>
+    </header>
+
+    <!-- CONTENT BODY AREA -->
+    <main id="content">
+
+      <!-- ═══════════════ 1. DASHBOARD VIEW ═══════════════ -->
+      <section class="page-tab active" id="view-dashboard">
+        <div class="stats-grid-row">
+          <div class="stat-tile">
+            <div class="st-label">Total Messages</div>
+            <div class="st-value" id="stat-count-total">0</div>
+            <div class="st-badge" style="color:var(--green)">✓ Live ingestion active</div>
+          </div>
+          <div class="stat-tile">
+            <div class="st-label">Unread Messages</div>
+            <div class="st-value" id="stat-count-unread" style="color:var(--blue)">0</div>
+            <div class="st-badge" style="color:var(--blue)">Across all 7 categories</div>
+          </div>
+          <div class="stat-tile">
+            <div class="st-label">Security Alerts</div>
+            <div class="st-value" id="stat-count-security" style="color:var(--red)">0</div>
+            <div class="st-badge" style="color:var(--red)">OTP & Login verification</div>
+          </div>
+          <div class="stat-tile">
+            <div class="st-label">Spam Quarantined</div>
+            <div class="st-value" id="stat-count-spam" style="color:var(--amber)">0</div>
+            <div class="st-badge" style="color:var(--amber)">Auto-isolated silently</div>
+          </div>
+        </div>
+
+        <div class="two-col-layout">
+          <!-- LIVE ACTIVITY PANEL -->
+          <div class="card-panel">
+            <div class="cp-header">
+              <div class="live-radar-wrap">
+                <div class="radar-beacon">
+                  <div class="rb-core"></div>
+                  <div class="rb-ring"></div>
+                </div>
+                <div>
+                  <div class="cp-title">Live Mail Activity</div>
+                  <div class="cp-sub">Real-time keyword matching stream with sound synthesis</div>
+                </div>
+              </div>
+            </div>
+            <div id="live-activity-list"></div>
+          </div>
+
+          <!-- CATEGORY INGESTION DISTRIBUTION -->
+          <div class="card-panel">
+            <div class="cp-header">
+              <div>
+                <div class="cp-title">Category Ingestion Matrix</div>
+                <div class="cp-sub">Click row to open category</div>
+              </div>
+            </div>
+            <div style="padding:14px 20px" id="category-distribution-container"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════ 2. EMAIL LIST VIEW ═══════════════ -->
+      <section class="page-tab" id="view-emaillist">
+        <div class="section-banner-strip">
+          <div class="sbs-left">
+            <div class="sbs-icon" id="banner-icon-slot">📬</div>
+            <div>
+              <div class="sbs-title" id="banner-title-slot">All Mail</div>
+              <div class="sbs-count" id="banner-count-slot">0 messages</div>
+            </div>
+          </div>
+          <div class="list-toolbar-actions">
+            <select id="sort-order-select" onchange="renderEmailCards()">
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
+              <option value="unread">Unread First</option>
+              <option value="sender">Sender A-Z</option>
+            </select>
+            <button onclick="markAllVisibleEmailsRead()">✓ Mark Read</button>
+          </div>
+        </div>
+        <div id="email-cards-container"></div>
+      </section>
+
+      <!-- ═══════════════ 3. NOTIFICATION & SOUND SETTINGS VIEW ═══════════════ -->
+      <section class="page-tab" id="view-notifications">
+        <div style="margin-bottom:18px">
+          <h2 style="font-size:18px;font-weight:900;color:var(--navy)">Smart Notification & Multi-Sound Engine</h2>
+          <p style="font-size:12px;color:var(--muted);margin-top:2px">Configure granular category popup notifications, audio chimes, quiet hours, and system alerts.</p>
+        </div>
+
+        <!-- GLOBAL SOUND & SYSTEM CONTROLS -->
+        <div class="settings-section-card">
+          <div class="ssc-header">
+            <span>Global Sound & Desktop Configuration</span>
+            <button class="topbar-btn-pill primary" style="font-size:11px;padding:4px 12px" onclick="playSynthesizedSound('chime')">▶ Test Master Sound</button>
+          </div>
+
+          <div class="ssc-row">
+            <span class="r-icon">🔔</span>
+            <div class="r-info">
+              <div class="r-label">Master Notification Popups</div>
+              <div class="r-desc">Enable or disable all floating top-right notification popups</div>
+            </div>
+            <label class="switch-control">
+              <input type="checkbox" id="glob-notif-switch" checked onchange="saveGlobalSettingsState()" />
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+
+          <div class="ssc-row">
+            <span class="r-icon">🔊</span>
+            <div class="r-info">
+              <div class="r-label">Master Notification Audio</div>
+              <div class="r-desc">Automatically play sound melody on incoming classified emails</div>
+            </div>
+            <label class="switch-control">
+              <input type="checkbox" id="glob-sound-switch" checked onchange="saveGlobalSettingsState()" />
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+
+          <div class="ssc-row">
+            <span class="r-icon">🔈</span>
+            <div class="r-info">
+              <div class="r-label">Volume Level (<span id="volume-indicator-text">80%</span>)</div>
+              <div class="r-desc">Adjust synthesizer playback amplitude</div>
+            </div>
+            <input type="range" id="glob-volume-bar" min="0" max="100" value="80" style="width:150px" oninput="document.getElementById('volume-indicator-text').textContent=this.value+'%';saveGlobalSettingsState()" />
+          </div>
+
+          <div class="ssc-row">
+            <span class="r-icon">🌙</span>
+            <div class="r-info">
+              <div class="r-label">Quiet Hours (10:00 PM – 07:00 AM)</div>
+              <div class="r-desc">Mute all notification sounds during nighttime automatically</div>
+            </div>
+            <label class="switch-control">
+              <input type="checkbox" id="glob-quiet-switch" checked onchange="saveGlobalSettingsState()" />
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+
+          <div class="ssc-row">
+            <span class="r-icon">💻</span>
+            <div class="r-info">
+              <div class="r-label">Laptop Desktop Screen Notifications</div>
+              <div class="r-desc">Pop up directly in your OS notification tray (Web Notification API)</div>
+            </div>
+            <button class="topbar-btn-pill" id="desktop-permission-btn" onclick="requestLaptopDesktopPermission()">
+              Enable OS Popups
+            </button>
+          </div>
+        </div>
+
+        <!-- PER-CATEGORY SOUND & POPUP MATRIX -->
+        <div class="settings-section-card">
+          <div class="ssc-header">
+            <span>Category Notification & Sound Matrix</span>
+            <span style="font-size:11px;font-weight:600;color:var(--muted)">Customize individual popups and sounds per category</span>
+          </div>
+
+          <div style="background:var(--bg-subtle);padding:10px 20px;font-size:11px;font-weight:800;color:var(--muted);display:grid;grid-template-columns:140px 1fr 1fr 120px 140px;gap:16px;">
+            <div>Category</div>
+            <div>Popup Window</div>
+            <div>Audio Sound</div>
+            <div>Priority Filter</div>
+            <div>Category Sound Melody</div>
+          </div>
+
+          <div id="category-sound-settings-rows"></div>
+        </div>
+      </section>
+
+      <!-- ═══════════════ 4. RULES & KEYWORDS VIEW ═══════════════ -->
+      <section class="page-tab" id="view-rules">
+        <div style="margin-bottom:18px">
+          <h2 style="font-size:18px;font-weight:900;color:var(--navy)">Category Keywords & Classification Rules</h2>
+          <p style="font-size:12px;color:var(--muted);margin-top:2px">Incoming emails matching these keywords are automatically sorted into their respective category.</p>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(320px, 1fr));gap:16px" id="rules-cards-masonry"></div>
+      </section>
+
+      <!-- ═══════════════ 5. SYSTEM SETTINGS VIEW ═══════════════ -->
+      <section class="page-tab" id="view-settings">
+        <div style="margin-bottom:18px">
+          <h2 style="font-size:18px;font-weight:900;color:var(--navy)">System Settings</h2>
+          <p style="font-size:12px;color:var(--muted);margin-top:2px">Simulation frequency and engine preferences.</p>
+        </div>
+        <div class="settings-section-card">
+          <div class="ssc-header">Simulator Stream Interval</div>
+          <div class="ssc-row">
+            <span class="r-icon">⏱️</span>
+            <div class="r-info">
+              <div class="r-label">Auto Simulation Stream Interval (Seconds)</div>
+              <div class="r-desc">How often incoming emails arrive in the background</div>
+            </div>
+            <input type="number" id="sim-speed-input-box" value="12" min="4" max="60" style="width:70px;padding:6px;border:1px solid var(--border);border-radius:6px;font-weight:700" onchange="restartSimulationTimer()" />
+          </div>
+        </div>
+        <button class="btn-compose-prime" style="width:auto;padding:10px 24px" onclick="showSystemToast('Settings saved successfully!')">Save Preferences</button>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- ═════════════════════════════════════════════════════════════════════════
+     EMAIL DETAIL MODAL WITH "WHY THIS EMAIL" PANEL
+═════════════════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay-backdrop" id="email-detail-dialog">
+  <div class="modal-dialog-frame">
+    <div class="mdf-header">
+      <div class="mh-info">
+        <div class="mh-subj" id="detail-subject-line"></div>
+        <div class="mh-sender">
+          From: <strong id="detail-sender-line"></strong> &bull; <span id="detail-time-line"></span>
+        </div>
+      </div>
+      <button class="mdf-close-btn" onclick="closeDetailDialog()">✕</button>
+    </div>
+    <div class="mdf-body">
+      <!-- "WHY THIS EMAIL" EXPLAINABILITY PANEL -->
+      <div class="why-classification-box">
+        <div class="wcb-head">💡 Why This Email? (Explainable AI Classification)</div>
+        <div class="wcb-grid">
+          <div class="wcb-cell">
+            <div class="wk">Assigned Category</div>
+            <div class="wv" id="detail-why-category-val"></div>
+          </div>
+          <div class="wcb-cell">
+            <div class="wk">Matched Keyword</div>
+            <div class="wv"><span class="wcb-kw-tag" id="detail-why-keyword-val"></span></div>
+          </div>
+          <div class="wcb-cell">
+            <div class="wk">Engine Confidence</div>
+            <div class="wv"><span class="wcb-conf-tag" id="detail-why-confidence-val"></span></div>
+          </div>
+          <div class="wcb-cell">
+            <div class="wk">Analysis Scope</div>
+            <div class="wv">Sender + Subject + Body</div>
+          </div>
+        </div>
+        <div class="wcb-explanation-text" id="detail-why-desc-val"></div>
+        <div class="wcb-action-bar">
+          <label style="font-size:11px;font-weight:700;color:var(--slate)">Move to Category:</label>
+          <select id="detail-move-category-select">
+            <option value="Personal">Personal</option>
+            <option value="Business">Business</option>
+            <option value="Finance">Finance</option>
+            <option value="Security">Security</option>
+            <option value="School / College">School / College</option>
+            <option value="Spam">Spam</option>
+            <option value="Uncategorized">Uncategorized</option>
+          </select>
+          <button onclick="applyEmailCategoryReassignment()">Move</button>
+          <button onclick="promptAddKeywordRuleFromDetail()">+ Add New Keyword Rule</button>
+        </div>
+      </div>
+
+      <!-- EMAIL BODY -->
+      <div class="mdf-email-content" id="detail-body-content"></div>
+    </div>
+    <div class="mdf-footer">
+      <button class="btn-compose-prime" style="width:auto;padding:8px 18px" onclick="closeDetailDialog();showSystemToast('Reply drafted')">↩ Reply</button>
+      <button class="topbar-btn-pill" onclick="archiveCurrentOpenedEmail()">📦 Archive</button>
+      <button class="topbar-btn-pill" style="color:var(--red);border-color:var(--red-border)" onclick="deleteCurrentOpenedEmail()">🗑 Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═════════════════════════════════════════════════════════════════════════
+     COMPOSE MODAL
+═════════════════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay-backdrop" id="compose-dialog">
+  <div class="modal-dialog-frame compose-box-frame">
+    <div class="mdf-header">
+      <div class="mh-info">
+        <div class="mh-subj">Compose New Message</div>
+      </div>
+      <button class="mdf-close-btn" onclick="closeComposeDialog()">✕</button>
+    </div>
+    <div style="padding:0">
+      <div class="cbf-row">
+        <label>To:</label>
+        <input type="email" id="cmp-input-to" placeholder="recipient@example.com" />
+      </div>
+      <div class="cbf-row">
+        <label>Subject:</label>
+        <input type="text" id="cmp-input-subject" placeholder="Subject line…" />
+      </div>
+      <div class="cbf-textarea">
+        <textarea id="cmp-input-body" placeholder="Write your message here…"></textarea>
+      </div>
+    </div>
+    <div class="mdf-footer">
+      <button class="btn-compose-prime" style="width:auto;padding:8px 20px" onclick="submitComposeMessage()">Send Message</button>
+      <button class="topbar-btn-pill" onclick="closeComposeDialog()">Discard</button>
+    </div>
+  </div>
+</div>
+
+<!-- SYSTEM TOAST PILL -->
+<div class="system-toast-pill" id="system-toast-box"></div>
+
+<!-- ═════════════════════════════════════════════════════════════════════════
+     APPLICATION ENGINE JAVASCRIPT
+═════════════════════════════════════════════════════════════════════════ -->
+<script>
+/* ─────────────────────────────────────────────────────────────────────────────
+   1. CATEGORY DEFINITIONS & KEYWORD RULES
+───────────────────────────────────────────────────────────────────────────── */
+const CATEGORIES = {
+  Personal: {
+    label: 'Personal',
+    icon: '👤',
+    color: '#059669',
+    light: '#ecfdf5',
+    border: '#a7f3d0',
+    defaultSound: 'harp',
+    keywords: ['family', 'friend', 'birthday', 'invitation', 'travel', 'photos', 'hello', 'congratulations', 'reunion', 'dinner', 'wedding', 'vacation', 'party', 'dear']
+  },
+  Business: {
+    label: 'Business',
+    icon: '💼',
+    color: '#2563eb',
+    light: '#eff6ff',
+    border: '#bfdbfe',
+    defaultSound: 'chime',
+    keywords: ['client', 'project', 'proposal', 'contract', 'invoice', 'meeting', 'team', 'company', 'partnership', 'quotation', 'deadline', 'presentation', 'report', 'agreement', 'manager', 'colleague']
+  },
+  Finance: {
+    label: 'Finance',
+    icon: '💰',
+    color: '#d97706',
+    light: '#fffbeb',
+    border: '#fde68a',
+    defaultSound: 'shimmer',
+    keywords: ['bank', 'payment', 'transaction', 'credit card', 'account', 'balance', 'loan', 'tax', 'receipt', 'refund', 'investment', 'statement', 'billing', 'withdrawal', 'deposit', 'transfer', 'salary', 'insurance', 'payment failed']
+  },
+  Security: {
+    label: 'Security',
+    icon: '🔒',
+    color: '#dc2626',
+    light: '#fef2f2',
+    border: '#fecaca',
+    defaultSound: 'siren',
+    keywords: ['password', 'verification code', 'otp', 'login', 'sign-in', 'suspicious activity', 'security alert', 'reset password', 'two-factor authentication', 'identity verification', 'device login', 'unauthorized access', 'account recovery', 'privacy alert']
+  },
+  'School / College': {
+    label: 'School / College',
+    icon: '🎓',
+    color: '#7c3aed',
+    light: '#faf5ff',
+    border: '#e9d5ff',
+    defaultSound: 'bell',
+    keywords: ['class', 'assignment', 'exam', 'result', 'syllabus', 'lecture', 'student', 'teacher', 'course', 'tuition', 'scholarship', 'admission', 'attendance', 'homework', 'timetable', 'semester', 'grades']
+  },
+  Spam: {
+    label: 'Spam',
+    icon: '🚫',
+    color: '#dc2626',
+    light: '#fef2f2',
+    border: '#fecaca',
+    defaultSound: 'buzz',
+    keywords: ['winner', 'prize', 'urgent response', 'claim now', 'lottery', 'guaranteed income', 'click here', 'act now', 'bitcoin giveaway', 'free money', 'cash reward', 'exclusive deal']
+  },
+  Uncategorized: {
+    label: 'Uncategorized',
+    icon: '📂',
+    color: '#64748b',
+    light: '#f1f5f9',
+    border: '#e2e8f0',
+    defaultSound: 'pop',
+    keywords: ['general update', 'notification', 'message', 'information', 'other', 'system update', 'confirmation', 'announcement', 'unknown sender']
+  }
+};
+
+const CATEGORIES_LIST = Object.keys(CATEGORIES);
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   2. NOTIFICATION & AUDIO SETTINGS STORE (ALL 7 CATEGORIES ENABLED)
+───────────────────────────────────────────────────────────────────────────── */
+let categoryConfigMap = {
+  Personal:          { popup: true, sound: true, priority: 'all', soundType: 'harp' },
+  Business:          { popup: true, sound: true, priority: 'all', soundType: 'chime' },
+  Finance:           { popup: true, sound: true, priority: 'all', soundType: 'shimmer' },
+  Security:          { popup: true, sound: true, priority: 'all', soundType: 'siren' },
+  'School / College':{ popup: true, sound: true, priority: 'all', soundType: 'bell' },
+  Spam:              { popup: true, sound: true, priority: 'all', soundType: 'buzz' },
+  Uncategorized:     { popup: true, sound: true, priority: 'all', soundType: 'pop' }
+};
+
+let globalAudioSettings = {
+  notificationsEnabled: true,
+  soundEnabled: true,
+  volume: 0.8,
+  quietHours: false
+};
+
+function loadStoredSettings() {
+  try {
+    const c = localStorage.getItem('livemail_category_config_v5');
+    if (c) categoryConfigMap = JSON.parse(c);
+    const g = localStorage.getItem('livemail_global_audio_v5');
+    if (g) globalAudioSettings = JSON.parse(g);
+  } catch(e) {}
+}
+
+function saveGlobalSettingsState() {
+  globalAudioSettings.notificationsEnabled = document.getElementById('glob-notif-switch').checked;
+  globalAudioSettings.soundEnabled = document.getElementById('glob-sound-switch').checked;
+  globalAudioSettings.volume = parseInt(document.getElementById('glob-volume-bar').value, 10) / 100;
+  globalAudioSettings.quietHours = document.getElementById('glob-quiet-switch').checked;
+
+  try {
+    localStorage.setItem('livemail_global_audio_v5', JSON.stringify(globalAudioSettings));
+    localStorage.setItem('livemail_category_config_v5', JSON.stringify(categoryConfigMap));
+  } catch(e) {}
+
+  updateTopBarToggleButtons();
+}
+
+function toggleGlobalNotificationsMaster() {
+  globalAudioSettings.notificationsEnabled = !globalAudioSettings.notificationsEnabled;
+  document.getElementById('glob-notif-switch').checked = globalAudioSettings.notificationsEnabled;
+  saveGlobalSettingsState();
+  showSystemToast(`Popups ${globalAudioSettings.notificationsEnabled ? 'Enabled 🔔' : 'Disabled 🔕'}`);
+}
+
+function toggleGlobalSoundQuick() {
+  globalAudioSettings.soundEnabled = !globalAudioSettings.soundEnabled;
+  document.getElementById('glob-sound-switch').checked = globalAudioSettings.soundEnabled;
+  saveGlobalSettingsState();
+  showSystemToast(`Sound ${globalAudioSettings.soundEnabled ? 'Enabled 🔊' : 'Muted 🔇'}`);
+}
+
+function updateTopBarToggleButtons() {
+  const notifBtn = document.getElementById('global-notif-toggle-btn');
+  const notifIcon = document.getElementById('glob-notif-icon');
+  const notifLabel = document.getElementById('glob-notif-label');
+  if (globalAudioSettings.notificationsEnabled) {
+    notifIcon.textContent = '🔔';
+    notifLabel.textContent = 'Popups: ON';
+    notifBtn.style.color = 'var(--blue)';
+    notifBtn.style.borderColor = 'var(--blue-border)';
+  } else {
+    notifIcon.textContent = '🔕';
+    notifLabel.textContent = 'Popups: OFF';
+    notifBtn.style.color = 'var(--slate)';
+    notifBtn.style.borderColor = 'var(--border)';
+  }
+
+  const soundBtn = document.getElementById('quick-sound-btn');
+  const soundIcon = document.getElementById('quick-sound-icon');
+  if (globalAudioSettings.soundEnabled) {
+    soundIcon.textContent = '🔊';
+    soundBtn.querySelector('span:last-child').textContent = 'Sound: ON';
+    soundBtn.style.color = 'var(--green)';
+    soundBtn.style.borderColor = 'var(--green-border)';
+  } else {
+    soundIcon.textContent = '🔇';
+    soundBtn.querySelector('span:last-child').textContent = 'Sound: OFF';
+    soundBtn.style.color = 'var(--slate)';
+    soundBtn.style.borderColor = 'var(--border)';
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   3. WEB AUDIO SYNTHESIZER
+───────────────────────────────────────────────────────────────────────────── */
+let sharedAudioContext = null;
+
+function getSynthesizerAudioContext() {
+  if (!sharedAudioContext) {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (AudioCtx) sharedAudioContext = new AudioCtx();
+  }
+  if (sharedAudioContext && sharedAudioContext.state === 'suspended') {
+    sharedAudioContext.resume();
+  }
+  return sharedAudioContext;
+}
+
+document.addEventListener('click', () => { getSynthesizerAudioContext(); }, { once: true });
+
+function playSynthesizedSound(soundStyle = 'chime') {
+  if (!globalAudioSettings.soundEnabled || soundStyle === 'none') return;
+
+  if (globalAudioSettings.quietHours) {
+    const hr = new Date().getHours();
+    if (hr >= 22 || hr < 7) return;
+  }
+
+  const ctx = getSynthesizerAudioContext();
+  if (!ctx) return;
+
+  const now = ctx.currentTime;
+  const vol = (globalAudioSettings.volume || 0.8) * 0.28;
+
+  switch (soundStyle) {
+    case 'harp': {
+      [523.25, 659.25, 783.99].forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now + idx * 0.06);
+        gain.gain.setValueAtTime(vol * 0.7, now + idx * 0.06);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.06 + 0.45);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + idx * 0.06);
+        osc.stop(now + idx * 0.06 + 0.45);
+      });
+      break;
+    }
+    case 'chime': {
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(659.25, now);
+      gain1.gain.setValueAtTime(vol * 0.8, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.35);
+
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'triangle';
+      osc2.frequency.setValueAtTime(830.61, now + 0.09);
+      gain2.gain.setValueAtTime(vol, now + 0.09);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(now + 0.09);
+      osc2.stop(now + 0.55);
+      break;
+    }
+    case 'shimmer': {
+      [698.46, 880.00, 1046.50, 1318.51].forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now + idx * 0.05);
+        gain.gain.setValueAtTime(vol * 0.6, now + idx * 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.05 + 0.38);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + idx * 0.05);
+        osc.stop(now + idx * 0.05 + 0.38);
+      });
+      break;
+    }
+    case 'siren': {
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'sawtooth';
+      osc1.frequency.setValueAtTime(880, now);
+      osc1.frequency.setValueAtTime(660, now + 0.12);
+      gain1.gain.setValueAtTime(vol * 0.8, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.32);
+
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'sawtooth';
+      osc2.frequency.setValueAtTime(880, now + 0.16);
+      osc2.frequency.setValueAtTime(660, now + 0.28);
+      gain2.gain.setValueAtTime(vol * 0.8, now + 0.16);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.48);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(now + 0.16);
+      osc2.stop(now + 0.48);
+      break;
+    }
+    case 'bell': {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(783.99, now);
+      osc.frequency.exponentialRampToValueAtTime(987.77, now + 0.08);
+      gain.gain.setValueAtTime(vol, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.5);
+      break;
+    }
+    case 'buzz': {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(140, now);
+      osc.frequency.exponentialRampToValueAtTime(90, now + 0.2);
+      gain.gain.setValueAtTime(vol * 0.5, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.25);
+      break;
+    }
+    case 'pop':
+    default: {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(620, now);
+      osc.frequency.exponentialRampToValueAtTime(180, now + 0.09);
+      gain.gain.setValueAtTime(vol, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.09);
+      break;
+    }
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   4. CLASSIFICATION & INGESTION PIPELINE
+───────────────────────────────────────────────────────────────────────────── */
+let emailDatabase = [];
+let nextEmailId = 101;
+let currentView = 'dashboard';
+let currentCategoryFilter = 'all';
+let activeOpenedEmailId = null;
+let simulationTimerHandle = null;
+let bellNotificationsList = [];
+
+function classifyEmailContent(sender, subject, body) {
+  const fullText = `${sender} ${subject} ${body}`.toLowerCase();
+  let bestCategory = 'Uncategorized';
+  let matchedKeyword = 'general update';
+  let maxScore = 0;
+  let allMatches = [];
+
+  const priorityOrder = ['Security', 'Finance', 'Spam', 'School / College', 'Business', 'Personal', 'Uncategorized'];
+
+  for (const cat of priorityOrder) {
+    if (cat === 'Uncategorized') continue;
+    const rule = CATEGORIES[cat];
+    const matches = [];
+
+    for (const kw of rule.keywords) {
+      if (fullText.includes(kw.toLowerCase())) {
+        matches.push(kw);
+      }
+    }
+
+    if (matches.length > 0) {
+      const score = matches.length * 10 + (fullText.includes(matches[0]) ? 5 : 0);
+      if (score > maxScore) {
+        maxScore = score;
+        bestCategory = cat;
+        matchedKeyword = matches[0];
+        allMatches = matches;
+      }
+    }
+  }
+
+  let confidence = 0;
+  if (bestCategory === 'Uncategorized') {
+    confidence = Math.floor(45 + Math.random() * 15);
+  } else {
+    confidence = Math.min(99, Math.floor(75 + allMatches.length * 6 + Math.random() * 5));
+  }
+
+  return {
+    category: bestCategory,
+    matchedKeyword: matchedKeyword,
+    allMatches: allMatches,
+    confidence: confidence
+  };
+}
+
+/* ── The Master Email Ingestion Function ─────────────────────────────────── */
+function ingestEmailRecord(rawEmail, triggerAlerts = true) {
+  // 1. Detect and categorize the email using sender, subject, body, and keyword rules
+  const classification = classifyEmailContent(rawEmail.sender, rawEmail.subject, rawEmail.body);
+
+  const emailObj = {
+    id: nextEmailId++,
+    sender: rawEmail.sender,
+    from: rawEmail.from || `${rawEmail.sender.toLowerCase().replace(/[^a-z]/g, '')}@domain.com`,
+    subject: rawEmail.subject,
+    body: rawEmail.body,
+    category: classification.category,
+    matchedKeyword: classification.matchedKeyword,
+    allMatches: classification.allMatches,
+    confidence: classification.confidence,
+    receivedAt: new Date(),
+    unread: true,
+    archived: false,
+    deleted: false
+  };
+
+  // 2. Save the email in the correct category section
+  emailDatabase.unshift(emailObj);
+
+  // 3. Update dashboard counters, sidebar counts, and category distribution matrix
+  updateBadgesAndCounters();
+  updateCategoryMatrix();
+
+  // 4. Highlight the matching category in the sidebar with a short colored glow
+  flashSidebarCategoryItem(emailObj.category);
+
+  // 5. Add a new animated row in the Live Mail Activity panel
+  pushActivityRow(emailObj);
+
+  // 6. Pulse notification bell icon and update unread count
+  pulseNotificationBell();
+
+  // 7. Add to Bell Dropdown list
+  bellNotificationsList.unshift(emailObj);
+  updateBellDropdownUI();
+
+  // 8. Re-render email list if user is currently viewing emails
+  if (currentView === 'emaillist') {
+    renderEmailCards();
+  }
+
+  // 9. Check whether notifications are enabled for that category and dispatch popup + sound
+  if (triggerAlerts) {
+    dispatchSmartNotification(emailObj);
+  }
+
+  return emailObj;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   5. NOTIFICATION DISPATCHER & TOP-RIGHT POPUP CREATION
+───────────────────────────────────────────────────────────────────────────── */
+function dispatchSmartNotification(email) {
+  const catConfig = categoryConfigMap[email.category] || { popup: true, sound: true, priority: 'all', soundType: 'chime' };
+
+  // Check priority setting
+  if (catConfig.priority === 'off') return;
+  if (catConfig.priority === 'high' && email.category !== 'Security' && email.category !== 'Finance') return;
+
+  // 1. Play Category Audio Sound
+  if (globalAudioSettings.soundEnabled && catConfig.sound) {
+    const soundStyle = catConfig.soundType || CATEGORIES[email.category]?.defaultSound || 'chime';
+    playSynthesizedSound(soundStyle);
+  }
+
+  // 2. Render In-App Top-Right Floating Popup Card
+  if (globalAudioSettings.notificationsEnabled && catConfig.popup !== false) {
+    createTopRightPopupCard(email);
+  }
+
+  // 3. Native Browser Laptop Notification
+  triggerLaptopOSNotification(email);
+}
+
+function createTopRightPopupCard(email) {
+  const container = document.getElementById('notification-toast-container');
+  if (!container) return;
+
+  const cat = CATEGORIES[email.category];
+  const isSecurity = email.category === 'Security';
+  const isFinance = email.category === 'Finance';
+
+  const card = document.createElement('div');
+  card.className = `mail-notif-popup-card ${isSecurity ? 'security-alert' : ''} ${isFinance ? 'finance-alert' : ''}`;
+  card.style.borderTopColor = cat.color;
+
+  card.innerHTML = `
+    <div class="npc-header">
+      <div class="npc-cat-icon-badge" style="background:${cat.light};color:${cat.color}">
+        ${cat.icon}
+      </div>
+      <div class="npc-header-text">
+        <div class="npc-category-tag" style="color:${cat.color}">${cat.label} ${isSecurity ? '• Alert' : ''}</div>
+        <div class="npc-sender-name">${escapeHtml(email.sender)}</div>
+      </div>
+      <button class="npc-close-icon" title="Dismiss">✕</button>
+    </div>
+    <div class="npc-subject-line">${escapeHtml(email.subject)}</div>
+    <div class="npc-preview-body">${escapeHtml(email.body.slice(0, 110))}…</div>
+    <div class="npc-matched-meta-row">
+      <span>Matched keyword: <strong>${escapeHtml(email.matchedKeyword)}</strong></span>
+      <span class="npc-timestamp">${formatTimeClock(email.receivedAt)}</span>
+    </div>
+    <div class="npc-actions-group">
+      <button class="btn-npc-view">View Email</button>
+      <button class="btn-npc-read">Mark as Read</button>
+      <button class="btn-npc-dismiss">Dismiss</button>
+    </div>
+    <div class="npc-countdown-bar"></div>
+  `;
+
+  card.style.cursor = 'pointer';
+  card.onclick = (e) => {
+    if (e.target.closest('button')) return;
+    dismissPopupCard(card);
+    const navKey = email.category === 'School / College' ? 'School' : email.category;
+    switchView(navKey);
+    setTimeout(() => { openEmailDetail(email.id); }, 100);
+  };
+
+  // Attach button event handlers
+  card.querySelector('.npc-close-icon').onclick = (e) => { e.stopPropagation(); dismissPopupCard(card); };
+  card.querySelector('.btn-npc-dismiss').onclick = (e) => { e.stopPropagation(); dismissPopupCard(card); };
+  card.querySelector('.btn-npc-view').onclick = (e) => {
+    e.stopPropagation();
+    dismissPopupCard(card);
+    const navKey = email.category === 'School / College' ? 'School' : email.category;
+    switchView(navKey);
+    setTimeout(() => { openEmailDetail(email.id); }, 100);
+  };
+  card.querySelector('.btn-npc-read').onclick = (e) => {
+    e.stopPropagation();
+    email.unread = false;
+    updateBadgesAndCounters();
+    if (currentView === 'emaillist') renderEmailCards();
+    dismissPopupCard(card);
+    showSystemToast('Marked as read');
+  };
+
+  // 8-Second Auto-dismiss timer with Pause on Hover
+  let autoDismissTimeout = null;
+  let remainingTime = 8000;
+  let timerStart = Date.now();
+
+  function startDismissTimer(duration) {
+    timerStart = Date.now();
+    autoDismissTimeout = setTimeout(() => {
+      dismissPopupCard(card);
+    }, duration);
+  }
+
+  card.addEventListener('mouseenter', () => {
+    card.classList.add('paused');
+    if (autoDismissTimeout) {
+      clearTimeout(autoDismissTimeout);
+      remainingTime -= (Date.now() - timerStart);
+    }
+  });
+
+  card.addEventListener('mouseleave', () => {
+    card.classList.remove('paused');
+    startDismissTimer(Math.max(1000, remainingTime));
+  });
+
+  startDismissTimer(remainingTime);
+
+  // Prepend so newest alert is on top and stacks vertically
+  container.prepend(card);
+}
+
+function dismissPopupCard(card) {
+  if (!card || card.classList.contains('closing')) return;
+  card.classList.add('closing');
+  setTimeout(() => { card.remove(); }, 280);
+}
+
+function pulseNotificationBell() {
+  const bell = document.getElementById('bell-icon-glyph');
+  if (bell) {
+    bell.classList.remove('bell-pulse-anim');
+    void bell.offsetWidth;
+    bell.classList.add('bell-pulse-anim');
+  }
+}
+
+function flashSidebarCategoryItem(category) {
+  const navKey = category === 'School / College' ? 'School' : category;
+  const navItem = document.getElementById(`nav-${navKey}`);
+  if (navItem) {
+    navItem.classList.remove('sidebar-glow-pulse');
+    void navItem.offsetWidth;
+    navItem.classList.add('sidebar-glow-pulse');
+  }
+}
+
+function triggerLaptopOSNotification(email) {
+  if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+    try {
+      const cat = CATEGORIES[email.category];
+      const notif = new Notification(`New ${cat.label} Mail • ${email.sender}`, {
+        body: `${email.subject}\n${email.body.slice(0, 90)}`,
+        icon: 'https://cdn-icons-png.flaticon.com/512/732/732200.png',
+        tag: String(email.id)
+      });
+      notif.onclick = () => {
+        window.focus();
+        openEmailDetail(email.id);
+        notif.close();
+      };
+    } catch(e) {}
+  }
+}
+
+function requestLaptopDesktopPermission() {
+  if ('Notification' in window) {
+    Notification.requestPermission().then(p => {
+      const btn = document.getElementById('desktop-permission-btn');
+      if (p === 'granted') {
+        btn.textContent = '✓ OS Popups Active';
+        btn.style.color = 'var(--green)';
+        playSynthesizedSound('chime');
+      } else {
+        btn.textContent = 'Permission Denied';
+      }
+    });
+  }
+}
+
+/* ── BELL DROPDOWN ── */
+function toggleBellCard() {
+  document.getElementById('bell-dropdown-card').classList.toggle('open');
+}
+document.addEventListener('click', (e) => {
+  const wrap = document.getElementById('bell-btn-element');
+  const dd = document.getElementById('bell-dropdown-card');
+  if (wrap && dd && !wrap.contains(e.target) && !dd.contains(e.target)) {
+    dd.classList.remove('open');
+  }
+});
+
+function updateBellDropdownUI() {
+  const list = document.getElementById('bell-card-feed');
+  const badge = document.getElementById('bell-badge-count');
+  badge.textContent = bellNotificationsList.length;
+  badge.style.display = bellNotificationsList.length > 0 ? 'inline-block' : 'none';
+
+  if (bellNotificationsList.length === 0) {
+    list.innerHTML = '<div class="bdd-empty">No recent notifications</div>';
+    return;
+  }
+
+  list.innerHTML = bellNotificationsList.slice(0, 8).map(e => {
+    const cat = CATEGORIES[e.category];
+    return `
+      <div class="bdd-item" onclick="openEmailDetail(${e.id});toggleBellCard()">
+        <div style="font-size:16px;width:28px;text-align:center">${cat.icon}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:11px;font-weight:800;color:${cat.color}">${cat.label} &bull; ${escapeHtml(e.sender)}</div>
+          <div style="font-size:12px;font-weight:700;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(e.subject)}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function clearAllRecentAlerts() {
+  bellNotificationsList = [];
+  updateBellDropdownUI();
+  showSystemToast('All notifications cleared');
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   6. LIVE ACTIVITY PANEL & SIDEBAR HIGHLIGHT
+───────────────────────────────────────────────────────────────────────────── */
+function pushActivityRow(email) {
+  const stream = document.getElementById('live-activity-list');
+  const cat = CATEGORIES[email.category];
+
+  const row = document.createElement('div');
+  row.className = 'activity-row-item';
+  row.innerHTML = `
+    <div class="act-badge-box" style="background:${cat.light};color:${cat.color}">
+      ${cat.icon}
+    </div>
+    <div class="act-info-block">
+      <div class="act-sender-name">${escapeHtml(email.sender)}</div>
+      <div class="act-sorting-text">
+        Saved into <strong>${cat.label}</strong> &bull; Keyword: <span class="act-kw-highlight">${escapeHtml(email.matchedKeyword)}</span>
+      </div>
+    </div>
+    <div class="act-meta-box">
+      <div class="act-time-stamp">just now</div>
+      <div class="act-conf-pill">${email.confidence}% match</div>
+    </div>
+  `;
+
+  stream.insertBefore(row, stream.firstChild);
+
+  const allRows = stream.querySelectorAll('.activity-row-item');
+  if (allRows.length > 18) allRows[allRows.length - 1].remove();
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   7. STATS & SIDEBAR COUNTERS
+───────────────────────────────────────────────────────────────────────────── */
+function updateBadgesAndCounters() {
+  const active = emailDatabase.filter(e => !e.archived && !e.deleted);
+  document.getElementById('badge-all').textContent = active.length;
+
+  const counts = { Personal:0, Business:0, Finance:0, Security:0, 'School / College':0, Spam:0, Uncategorized:0 };
+  active.forEach(e => {
+    if (counts[e.category] !== undefined) counts[e.category]++;
+  });
+
+  document.getElementById('badge-Personal').textContent = counts.Personal;
+  document.getElementById('badge-Business').textContent = counts.Business;
+  document.getElementById('badge-Finance').textContent  = counts.Finance;
+  document.getElementById('badge-Security').textContent = counts.Security;
+  document.getElementById('badge-School').textContent   = counts['School / College'];
+  document.getElementById('badge-Spam').textContent     = counts.Spam;
+  document.getElementById('badge-Uncategorized').textContent = counts.Uncategorized;
+
+  document.getElementById('stat-count-total').textContent = active.length;
+  document.getElementById('stat-count-unread').textContent = active.filter(e => e.unread).length;
+  document.getElementById('stat-count-security').textContent = counts.Security;
+  document.getElementById('stat-count-spam').textContent = counts.Spam;
+}
+
+function updateCategoryMatrix() {
+  const active = emailDatabase.filter(e => !e.archived && !e.deleted);
+  const total = active.length || 1;
+  const container = document.getElementById('category-distribution-container');
+
+  container.innerHTML = CATEGORIES_LIST.map(catKey => {
+    const cfg = CATEGORIES[catKey];
+    const count = active.filter(e => e.category === catKey).length;
+    const pct = Math.round((count / total) * 100);
+    const navKey = catKey === 'School / College' ? 'School' : catKey;
+
+    return `
+      <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);cursor:pointer;" onclick="switchView('${navKey}')">
+        <div style="font-size:12px;font-weight:700;color:var(--slate);width:125px;">${cfg.icon} ${cfg.label}</div>
+        <div style="flex:1;height:6px;background:var(--bg-subtle);border-radius:99px;overflow:hidden">
+          <div style="height:100%;border-radius:99px;width:${pct}%;background:${cfg.color};transition:width .5s"></div>
+        </div>
+        <div style="font-size:12px;font-weight:800;color:var(--navy);width:24px;text-align:right">${count}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   8. NAVIGATION & VIEWS
+───────────────────────────────────────────────────────────────────────────── */
+function switchView(pageKey) {
+  document.querySelectorAll('.sidebar-nav-item').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.page-tab').forEach(el => el.classList.remove('active'));
+
+  const navElem = document.getElementById(`nav-${pageKey}`);
+  if (navElem) navElem.classList.add('active');
+
+  const catPages = ['all', 'Personal', 'Business', 'Finance', 'Security', 'School', 'Spam', 'Uncategorized'];
+
+  if (pageKey === 'dashboard') {
+    currentView = 'dashboard';
+    document.getElementById('view-dashboard').classList.add('active');
+    setTopBarHeadings('Dashboard', 'Real-time keyword filtering & instant popup notifications with sound');
+  } else if (catPages.includes(pageKey)) {
+    currentView = 'emaillist';
+    document.getElementById('view-emaillist').classList.add('active');
+
+    const mappedCategory = pageKey === 'School' ? 'School / College' : pageKey;
+    currentCategoryFilter = mappedCategory;
+
+    if (pageKey === 'all') {
+      document.getElementById('banner-icon-slot').textContent = '📬';
+      document.getElementById('banner-title-slot').textContent = 'All Mail (Unified Inbox)';
+      setTopBarHeadings('All Mail', 'Unified mailbox with transparent category classification');
+    } else {
+      const cfg = CATEGORIES[mappedCategory];
+      document.getElementById('banner-icon-slot').textContent = cfg.icon;
+      document.getElementById('banner-title-slot').textContent = `${cfg.label} Section`;
+      setTopBarHeadings(cfg.label, `Filtered message stream for ${cfg.label}`);
+    }
+
+    renderEmailCards();
+  } else if (pageKey === 'notifications') {
+    currentView = 'notifications';
+    document.getElementById('view-notifications').classList.add('active');
+    setTopBarHeadings('Notification & Sounds', 'Category popup rules and multi-sound audio engine');
+    renderCategorySoundSettings();
+  } else if (pageKey === 'rules') {
+    currentView = 'rules';
+    document.getElementById('view-rules').classList.add('active');
+    setTopBarHeadings('Rules & Keywords', 'Manage automatic categorization keywords');
+    renderRulesMasonry();
+  } else if (pageKey === 'settings') {
+    currentView = 'settings';
+    document.getElementById('view-settings').classList.add('active');
+    setTopBarHeadings('Settings', 'Simulator preferences & stream frequency');
+  }
+
+  closeMobileMenu();
+}
+
+function setTopBarHeadings(title, sub) {
+  document.getElementById('page-title-text').textContent = title;
+  document.getElementById('page-sub-text').textContent = sub;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   9. EMAIL LIST RENDERING
+───────────────────────────────────────────────────────────────────────────── */
+function getFilteredEmailList() {
+  let list = emailDatabase.filter(e => !e.archived && !e.deleted);
+
+  if (currentCategoryFilter !== 'all') {
+    list = list.filter(e => e.category === currentCategoryFilter);
+  }
+
+  const query = document.getElementById('global-search-input').value.trim().toLowerCase();
+  if (query) {
+    list = list.filter(e =>
+      e.sender.toLowerCase().includes(query) ||
+      e.subject.toLowerCase().includes(query) ||
+      e.body.toLowerCase().includes(query) ||
+      e.matchedKeyword.toLowerCase().includes(query)
+    );
+  }
+
+  const sort = document.getElementById('sort-order-select')?.value || 'newest';
+  if (sort === 'newest') list.sort((a,b) => b.receivedAt - a.receivedAt);
+  else if (sort === 'oldest') list.sort((a,b) => a.receivedAt - b.receivedAt);
+  else if (sort === 'unread') list.sort((a,b) => (b.unread ? 1 : 0) - (a.unread ? 1 : 0));
+  else if (sort === 'sender') list.sort((a,b) => a.sender.localeCompare(b.sender));
+
+  return list;
+}
+
+function renderEmailCards() {
+  const container = document.getElementById('email-cards-container');
+  const emails = getFilteredEmailList();
+
+  document.getElementById('banner-count-slot').textContent = `${emails.length} message${emails.length !== 1 ? 's' : ''}`;
+
+  if (emails.length === 0) {
+    container.innerHTML = `
+      <div style="background:white;border:1px solid var(--border);border-radius:var(--radius-lg);padding:60px 20px;text-align:center;color:var(--muted)">
+        <div style="font-size:44px;margin-bottom:12px;opacity:.6">📭</div>
+        <h4 style="font-size:15px;font-weight:800;color:var(--navy);margin-bottom:4px">No Emails in this Section</h4>
+        <p style="font-size:12px">No messages matching this category or filter.</p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = emails.map(email => {
+    const cat = CATEGORIES[email.category];
+    const initials = email.sender.split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase() || 'M';
+
+    return `
+      <div class="email-row-card ${email.unread ? 'unread' : ''}" onclick="openEmailDetail(${email.id})">
+        <div class="erc-avatar" style="background:${cat.color}">${initials}</div>
+        <div class="erc-body">
+          <div class="erc-top">
+            <span class="erc-sender">${escapeHtml(email.sender)}</span>
+            <span class="erc-cat-chip" style="background:${cat.light};color:${cat.color};border:1px solid ${cat.border}">
+              ${cat.icon} ${cat.label}
+            </span>
+            ${email.unread ? '<span style="width:7px;height:7px;background:var(--blue);border-radius:50%"></span>' : ''}
+          </div>
+          <div class="erc-subject">${escapeHtml(email.subject)}</div>
+          <div class="erc-snippet">${escapeHtml(email.body.slice(0, 120))}…</div>
+        </div>
+        <div class="erc-right">
+          <div class="erc-time">${formatRelativeTime(email.receivedAt)}</div>
+          <div class="erc-hover-btns">
+            <button onclick="event.stopPropagation();toggleReadStatus(${email.id})">${email.unread ? 'Mark Read' : 'Unread'}</button>
+            <button onclick="event.stopPropagation();archiveEmailById(${email.id})">Archive</button>
+            <button onclick="event.stopPropagation();deleteEmailById(${email.id})" style="color:var(--red)">Delete</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function handleSearchFilter() {
+  if (currentView === 'dashboard') switchView('all');
+  else renderEmailCards();
+}
+
+function markAllVisibleEmailsRead() {
+  getFilteredEmailList().forEach(e => e.unread = false);
+  updateBadgesAndCounters();
+  renderEmailCards();
+  showSystemToast('All visible emails marked as read');
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   10. EMAIL DETAIL & "WHY THIS EMAIL" PANEL
+───────────────────────────────────────────────────────────────────────────── */
+function openEmailDetail(id) {
+  const email = emailDatabase.find(e => e.id === id);
+  if (!email) return;
+
+  activeOpenedEmailId = id;
+  email.unread = false;
+  updateBadgesAndCounters();
+
+  const cat = CATEGORIES[email.category];
+
+  document.getElementById('detail-subject-line').textContent = email.subject;
+  document.getElementById('detail-sender-line').textContent = `${email.sender} <${email.from}>`;
+  document.getElementById('detail-time-line').textContent = email.receivedAt.toLocaleString();
+  document.getElementById('detail-body-content').textContent = email.body;
+
+  document.getElementById('detail-why-category-val').innerHTML = `<span style="color:${cat.color};font-weight:800">${cat.icon} ${cat.label}</span>`;
+  document.getElementById('detail-why-keyword-val').textContent = email.matchedKeyword;
+  document.getElementById('detail-why-confidence-val').textContent = `${email.confidence}% Match`;
+
+  let expl = '';
+  if (email.category === 'Uncategorized') {
+    expl = `No specific keywords from Personal, Business, Finance, Security, School, or Spam matched this email. It was safely filed in Uncategorized.`;
+  } else {
+    expl = `Classified into <strong>${cat.label}</strong> because the keyword <strong>"${email.matchedKeyword}"</strong> was detected. (Matched keywords: ${email.allMatches.join(', ')}).`;
+  }
+  document.getElementById('detail-why-desc-val').innerHTML = expl;
+
+  document.getElementById('detail-move-category-select').value = email.category;
+  document.getElementById('email-detail-dialog').classList.add('open');
+
+  if (currentView === 'emaillist') renderEmailCards();
+}
+
+function closeDetailDialog() {
+  document.getElementById('email-detail-dialog').classList.remove('open');
+  activeOpenedEmailId = null;
+}
+
+function applyEmailCategoryReassignment() {
+  if (!activeOpenedEmailId) return;
+  const newCat = document.getElementById('detail-move-category-select').value;
+  const email = emailDatabase.find(e => e.id === activeOpenedEmailId);
+  if (!email || !newCat) return;
+
+  email.category = newCat;
+  closeDetailDialog();
+  updateBadgesAndCounters();
+  updateCategoryMatrix();
+  if (currentView === 'emaillist') renderEmailCards();
+  showSystemToast(`Email moved to ${newCat}`);
+}
+
+function promptAddKeywordRuleFromDetail() {
+  if (!activeOpenedEmailId) return;
+  const email = emailDatabase.find(e => e.id === activeOpenedEmailId);
+  if (!email) return;
+
+  const kw = prompt(`Add a new keyword rule for "${email.category}":`, '');
+  if (kw && kw.trim()) {
+    CATEGORIES[email.category].keywords.push(kw.trim().toLowerCase());
+    showSystemToast(`Added rule "${kw.trim()}" to ${email.category}`);
+  }
+}
+
+function toggleReadStatus(id) {
+  const m = emailDatabase.find(e => e.id === id);
+  if (m) {
+    m.unread = !m.unread;
+    updateBadgesAndCounters();
+    renderEmailCards();
+  }
+}
+
+function archiveEmailById(id) {
+  const m = emailDatabase.find(e => e.id === id);
+  if (m) {
+    m.archived = true;
+    updateBadgesAndCounters();
+    updateCategoryMatrix();
+    if (currentView === 'emaillist') renderEmailCards();
+    showSystemToast('Email archived');
+  }
+}
+
+function deleteEmailById(id) {
+  const m = emailDatabase.find(e => e.id === id);
+  if (m) {
+    m.deleted = true;
+    updateBadgesAndCounters();
+    updateCategoryMatrix();
+    if (currentView === 'emaillist') renderEmailCards();
+    showSystemToast('Email deleted');
+  }
+}
+
+function archiveCurrentOpenedEmail() { if (activeOpenedEmailId) { archiveEmailById(activeOpenedEmailId); closeDetailDialog(); } }
+function deleteCurrentOpenedEmail()  { if (activeOpenedEmailId) { deleteEmailById(activeOpenedEmailId); closeDetailDialog(); } }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   11. CATEGORY NOTIFICATION CONTROLS PAGE RENDERING
+───────────────────────────────────────────────────────────────────────────── */
+function renderCategorySoundSettings() {
+  const container = document.getElementById('category-sound-settings-rows');
+  if (!container) return;
+
+  container.innerHTML = CATEGORIES_LIST.map(catKey => {
+    const cfg = CATEGORIES[catKey];
+    const settings = categoryConfigMap[catKey] || { popup: true, sound: true, priority: 'all', soundType: cfg.defaultSound };
+
+    return `
+      <div class="cat-config-grid-row">
+        <div style="display:flex;align-items:center;gap:8px;font-weight:800;color:${cfg.color}">
+          <span style="font-size:18px">${cfg.icon}</span>
+          <span>${cfg.label}</span>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:8px">
+          <label class="switch-control">
+            <input type="checkbox" ${settings.popup ? 'checked' : ''} onchange="updateCatPopupToggle('${catKey}', this.checked)" />
+            <span class="switch-slider"></span>
+          </label>
+          <span style="font-size:11px;font-weight:700;color:var(--slate)">${settings.popup ? 'Popup Active' : 'Disabled'}</span>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:8px">
+          <label class="switch-control">
+            <input type="checkbox" ${settings.sound ? 'checked' : ''} onchange="updateCatSoundToggle('${catKey}', this.checked)" />
+            <span class="switch-slider"></span>
+          </label>
+          <span style="font-size:11px;font-weight:700;color:var(--slate)">${settings.sound ? 'Sound Active' : 'Muted'}</span>
+        </div>
+
+        <div>
+          <select style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:11px;font-weight:700" onchange="updateCatPriorityFilter('${catKey}', this.value)">
+            <option value="all" ${settings.priority === 'all' ? 'selected' : ''}>All Emails</option>
+            <option value="high" ${settings.priority === 'high' ? 'selected' : ''}>High Priority Only</option>
+            <option value="off" ${settings.priority === 'off' ? 'selected' : ''}>Off</option>
+          </select>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:6px">
+          <select style="flex:1;padding:5px 6px;border:1px solid var(--border);border-radius:var(--radius);font-size:11px;font-weight:700" onchange="updateCatSoundMelody('${catKey}', this.value)">
+            <option value="harp" ${settings.soundType === 'harp' ? 'selected' : ''}>Harp (Warm)</option>
+            <option value="chime" ${settings.soundType === 'chime' ? 'selected' : ''}>Chime (Business)</option>
+            <option value="shimmer" ${settings.soundType === 'shimmer' ? 'selected' : ''}>Shimmer (Finance)</option>
+            <option value="siren" ${settings.soundType === 'siren' ? 'selected' : ''}>Siren (Security)</option>
+            <option value="bell" ${settings.soundType === 'bell' ? 'selected' : ''}>Campus Bell</option>
+            <option value="buzz" ${settings.soundType === 'buzz' ? 'selected' : ''}>Buzz (Spam)</option>
+            <option value="pop" ${settings.soundType === 'pop' ? 'selected' : ''}>Pop (Soft)</option>
+            <option value="none" ${settings.soundType === 'none' ? 'selected' : ''}>None</option>
+          </select>
+          <button class="topbar-btn-pill" style="padding:4px 8px;font-size:11px" onclick="playSynthesizedSound('${settings.soundType || 'chime'}')" title="Preview sound">▶</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function updateCatPopupToggle(cat, val) {
+  categoryConfigMap[cat].popup = val;
+  saveGlobalSettingsState();
+  renderCategorySoundSettings();
+  showSystemToast(`Popup ${val ? 'enabled' : 'disabled'} for ${cat}`);
+}
+function updateCatSoundToggle(cat, val) {
+  categoryConfigMap[cat].sound = val;
+  saveGlobalSettingsState();
+  renderCategorySoundSettings();
+  showSystemToast(`Sound ${val ? 'enabled' : 'muted'} for ${cat}`);
+}
+function updateCatPriorityFilter(cat, val) {
+  categoryConfigMap[cat].priority = val;
+  saveGlobalSettingsState();
+}
+function updateCatSoundMelody(cat, val) {
+  categoryConfigMap[cat].soundType = val;
+  saveGlobalSettingsState();
+  playSynthesizedSound(val);
+  renderCategorySoundSettings();
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   12. RULES & KEYWORDS UI
+───────────────────────────────────────────────────────────────────────────── */
+function renderRulesMasonry() {
+  const grid = document.getElementById('rules-cards-masonry');
+  if (!grid) return;
+
+  grid.innerHTML = CATEGORIES_LIST.map(catKey => {
+    const cfg = CATEGORIES[catKey];
+    const pills = cfg.keywords.map((kw, idx) => `
+      <span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:99px;background:${cfg.light};color:${cfg.color};border:1px solid ${cfg.border};display:inline-flex;align-items:center;gap:4px">
+        ${escapeHtml(kw)}
+        <span style="cursor:pointer;opacity:.6" onclick="deleteKeywordRule('${catKey}', ${idx})">✕</span>
+      </span>
+    `).join('');
+
+    const inputId = `kw-input-${catKey.replace(/[^a-zA-Z]/g, '')}`;
+
+    return `
+      <div style="background:white;border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);overflow:hidden">
+        <div style="padding:14px 18px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);background:${cfg.light}">
+          <span style="font-size:20px">${cfg.icon}</span>
+          <span style="font-size:13px;font-weight:800;color:${cfg.color}">${cfg.label}</span>
+          <span style="font-size:11px;font-weight:600;color:var(--muted);margin-left:auto">${cfg.keywords.length} keywords</span>
+        </div>
+        <div style="padding:14px 18px;display:flex;flex-wrap:wrap;gap:6px;max-height:180px;overflow-y:auto">
+          ${pills}
+        </div>
+        <div style="padding:10px 18px;border-top:1px solid var(--border);display:flex;gap:6px;background:var(--bg-subtle)">
+          <input type="text" id="${inputId}" placeholder="Add keyword…" style="flex:1;background:white;border:1px solid var(--border);border-radius:var(--radius);padding:6px 10px;font-size:12px;outline:none" onkeydown="if(event.key==='Enter')addKeywordRule('${catKey}','${inputId}')" />
+          <button style="background:var(--blue);color:white;border:none;border-radius:var(--radius);padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer" onclick="addKeywordRule('${catKey}','${inputId}')">+ Add</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function addKeywordRule(category, inputId) {
+  const inp = document.getElementById(inputId);
+  if (!inp || !inp.value.trim()) return;
+  const kw = inp.value.trim().toLowerCase();
+  if (!CATEGORIES[category].keywords.includes(kw)) {
+    CATEGORIES[category].keywords.push(kw);
+    renderRulesMasonry();
+    showSystemToast(`Keyword "${kw}" added to ${category}`);
+  }
+  inp.value = '';
+}
+
+function deleteKeywordRule(category, index) {
+  CATEGORIES[category].keywords.splice(index, 1);
+  renderRulesMasonry();
+  showSystemToast('Keyword removed');
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   13. COMPOSE MODAL & SIMULATOR STREAM
+───────────────────────────────────────────────────────────────────────────── */
+function openComposeModal() {
+  document.getElementById('cmp-input-to').value = '';
+  document.getElementById('cmp-input-subject').value = '';
+  document.getElementById('cmp-input-body').value = '';
+  document.getElementById('compose-dialog').classList.add('open');
+}
+function closeComposeDialog() { document.getElementById('compose-dialog').classList.remove('open'); }
+
+function submitComposeMessage() {
+  const to = document.getElementById('cmp-input-to').value.trim();
+  const subj = document.getElementById('cmp-input-subject').value.trim();
+  const body = document.getElementById('cmp-input-body').value.trim();
+
+  if (!to || !subj || !body) {
+    alert('Please fill out all fields before sending.');
+    return;
+  }
+  closeComposeDialog();
+
+  ingestEmailRecord({
+    sender: `Outgoing: ${to}`,
+    from: to,
+    subject: `Re: ${subj}`,
+    body: body
+  }, true);
+
+  showSystemToast('Email sent and categorized successfully!');
+}
+
+const SIMULATED_EMAIL_POOL = [
+  {
+    sender: 'Northstar Bank',
+    from: 'alerts@northstarbank.com',
+    subject: 'Your monthly account statement is ready',
+    body: 'Dear Customer, Your monthly account statement for August 2026 is ready for review. Balance across checking & savings: $42,850.00.'
+  },
+  {
+    sender: 'Google Security',
+    from: 'no-reply@accounts.google.com',
+    subject: 'Security Alert: New sign-in detected on your account & OTP required',
+    body: 'Hi Sudeep, We detected a new login to your Google Account from a Windows device. Enter your verification code OTP 492019 to authenticate this session.'
+  },
+  {
+    sender: 'Sarah Jenkins (Apex Global)',
+    from: 's.jenkins@apexglobal.com',
+    subject: 'Client project contract proposal and invoice deadline',
+    body: 'Hi Team, Please review the attached client project proposal and milestone contract. The client has requested an urgent meeting tomorrow.'
+  },
+  {
+    sender: 'Emily Watson',
+    from: 'emily.w@familymail.com',
+    subject: 'Family dinner reunion & vacation photos!',
+    body: 'Hello everyone! We are organizing a family dinner reunion this weekend to celebrate grandfather\'s birthday! Vacation photos attached.'
+  },
+  {
+    sender: 'Prof. Anderson (Dean Office)',
+    from: 'anderson@university.edu',
+    subject: 'Final semester exam timetable and homework results',
+    body: 'Dear Students, The timetable for the semester exam has been published. All homework assignments must be uploaded before Friday.'
+  },
+  {
+    sender: 'Mega Jackpot Rewards',
+    from: 'claim@instantprizewin.xyz',
+    subject: 'CONGRATULATIONS! Claim your $50,000 lottery cash reward now!',
+    body: 'YOU ARE A WINNER! You have won our guaranteed income lottery! Click here and act now to claim your cash reward prize!'
+  },
+  {
+    sender: 'Amazon Web Services',
+    from: 'no-reply@amazon.com',
+    subject: 'General confirmation regarding your system update',
+    body: 'Hello, This is an automated notification message confirming your routine system update. No further action is needed at this time.'
+  }
+];
+
+let streamIndex = 0;
+
+let isAutoStreamActive = false;
+
+function triggerIncomingEmailSimulation() {
+  const tpl = SIMULATED_EMAIL_POOL[streamIndex % SIMULATED_EMAIL_POOL.length];
+  streamIndex++;
+  ingestEmailRecord({ ...tpl }, true);
+}
+
+function toggleAutoSimulationStream() {
+  isAutoStreamActive = !isAutoStreamActive;
+  const btn = document.getElementById('auto-stream-toggle-btn');
+  const lbl = document.getElementById('auto-stream-btn-label');
+  if (isAutoStreamActive) {
+    if (btn) {
+      btn.style.background = 'var(--green-light)';
+      btn.style.color = 'var(--green)';
+      btn.style.borderColor = 'var(--green-border)';
+    }
+    if (lbl) lbl.textContent = 'Live Stream: ON';
+    startSimulationTimer();
+    showSystemToast('Live automatic stream resumed');
+  } else {
+    if (btn) {
+      btn.style.background = 'var(--bg-subtle)';
+      btn.style.color = 'var(--slate)';
+      btn.style.borderColor = 'var(--border)';
+    }
+    if (lbl) lbl.textContent = 'Live Stream: PAUSED';
+    if (simulationTimerHandle) clearInterval(simulationTimerHandle);
+    showSystemToast('Live automatic stream paused');
+  }
+}
+
+function startSimulationTimer() {
+  if (simulationTimerHandle) clearInterval(simulationTimerHandle);
+  if (!isAutoStreamActive) return;
+  const speed = parseInt(document.getElementById('sim-speed-input-box')?.value || '8', 10);
+  
+  // First auto-email fires after 2.5s for immediate live demonstration
+  setTimeout(() => {
+    if (isAutoStreamActive) triggerIncomingEmailSimulation();
+  }, 2500);
+
+  simulationTimerHandle = setInterval(() => {
+    if (isAutoStreamActive) triggerIncomingEmailSimulation();
+  }, Math.max(4, speed) * 1000);
+}
+
+function restartSimulationTimer() {
+  if (simulationTimerHandle) clearInterval(simulationTimerHandle);
+  startSimulationTimer();
+  showSystemToast('Simulation speed updated');
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   14. TOAST, TIME & MOBILE UTILITIES
+───────────────────────────────────────────────────────────────────────────── */
+let toastHandle = null;
+function showSystemToast(msg) {
+  const t = document.getElementById('system-toast-box');
+  t.textContent = msg;
+  t.style.display = 'block';
+  if (toastHandle) clearTimeout(toastHandle);
+  toastHandle = setTimeout(() => { t.style.display = 'none'; }, 2500);
+}
+
+function escapeHtml(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function formatRelativeTime(date) {
+  const diff = new Date() - date;
+  if (diff < 60000) return 'Just now';
+  if (diff < 3600000) return `${Math.floor(diff/60000)}m ago`;
+  if (diff < 86400000) return `${Math.floor(diff/3600000)}h ago`;
+  return date.toLocaleDateString([], { month:'short', day:'numeric' });
+}
+
+function formatTimeClock(date) {
+  return date.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+}
+
+function toggleMobileMenu() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('mobile-shade').classList.toggle('open');
+}
+function closeMobileMenu() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('mobile-shade').classList.remove('open');
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   15. INITIALIZATION
+───────────────────────────────────────────────────────────────────────────── */
+function clearAllStoredEmails() {
+  emailDatabase = [];
+  bellNotificationsList = [];
+  updateBadgesAndCounters();
+  updateCategoryMatrix();
+  if (currentView === 'emaillist') renderEmailCards();
+  updateBellDropdownUI();
+  showSystemToast('Inbox cleared. Only new incoming emails will be stored.');
+}
+
+function initLiveMailFilteringApp() {
+  loadStoredSettings();
+
+  // Start with empty inbox - ONLY new incoming emails will be stored
+  updateBadgesAndCounters();
+  updateCategoryMatrix();
+  renderRulesMasonry();
+  renderCategorySoundSettings();
+  updateBellDropdownUI();
+  updateTopBarToggleButtons();
+
+  if ('Notification' in window && Notification.permission === 'granted') {
+    const btn = document.getElementById('desktop-permission-btn');
+    if (btn) {
+      btn.textContent = '✓ OS Popups Active';
+      btn.style.color = 'var(--green)';
+    }
+  }
+
+  // Connect to Live Real-Time Socket Server (No Refresh Needed)
+  try {
+    if (typeof io !== 'undefined') {
+      const liveSocket = io('http://localhost:5000', {
+        transports: ['polling', 'websocket'],
+        reconnection: true
+      });
+      liveSocket.on('new-email', function(email) {
+        if (!email) return;
+        ingestEmailRecord({
+          id: email._id || email.gmailId,
+          sender: email.from || 'Unknown Sender',
+          from: email.from || '',
+          subject: email.subject || '(No Subject)',
+          body: email.content || email.snippet || email.text || '',
+          category: email.category || 'Uncategorized',
+          matchedKeyword: email.matchedKeyword || ''
+        }, true);
+      });
+    }
+  } catch (err) {
+    console.log('Socket connect note:', err);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', initLiveMailFilteringApp);
+</script>
+</body>
+</html>
