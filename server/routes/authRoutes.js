@@ -22,11 +22,14 @@ router.get('/google', (req, res, next) => {
   })(req, res, next);
 });
 
-router.get('/oauth2callback', (req, res, next) => {
+const getClientUrl = () => process.env.CLIENT_URL || 'http://localhost:3000';
+
+const handleOAuthCallback = (req, res, next) => {
   passport.authenticate('google', { session: true }, (err, user) => {
+    const clientUrl = getClientUrl();
     if (err || !user) {
       console.error('OAuth Callback Failed:', err);
-      return res.redirect('http://localhost:3000/?error=auth_failed');
+      return res.redirect(`${clientUrl}/?error=auth_failed`);
     }
 
     req.logIn(user, (loginErr) => {
@@ -40,12 +43,17 @@ router.get('/oauth2callback', (req, res, next) => {
         })
       );
 
-      return res.redirect(`http://localhost:3000/dashboard?auth_success=true&token=${token}&user=${userPayload}`);
+      return res.redirect(`${clientUrl}/dashboard?auth_success=true&token=${token}&user=${userPayload}`);
     });
   })(req, res, next);
-});
+};
+
+router.get('/oauth2callback', handleOAuthCallback);
+router.get('/google/callback', handleOAuthCallback);
+router.get('/callback', handleOAuthCallback);
 
 router.get('/demo-login', async (req, res) => {
+  const clientUrl = getClientUrl();
   try {
     const User = require('../models/User');
     let user = await User.findOne({ email: 'sudeepbiradar031@gmail.com' });
@@ -69,11 +77,11 @@ router.get('/demo-login', async (req, res) => {
           profilePicture: user.profilePicture || user.picture || user.avatar || '',
         })
       );
-      return res.redirect(`http://localhost:3000/dashboard?auth_success=true&token=${token}&user=${userPayload}`);
+      return res.redirect(`${clientUrl}/dashboard?auth_success=true&token=${token}&user=${userPayload}`);
     });
   } catch (err) {
     console.error('Demo login error:', err);
-    return res.redirect('http://localhost:3000/?error=' + encodeURIComponent(err.message));
+    return res.redirect(`${clientUrl}/?error=` + encodeURIComponent(err.message));
   }
 });
 
