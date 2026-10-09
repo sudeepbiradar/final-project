@@ -42,9 +42,9 @@ services:
         fromService:
           type: web
           name: livemail-backend
-          property: url
+          property: hostpath
       - key: REACT_APP_SOCKET_URL
         fromService:
           type: web
           name: livemail-backend
-          property: url
+          property: hostpath
