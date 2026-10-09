@@ -3,6 +3,7 @@ services:
   - type: web
     name: livemail-backend
     runtime: node
+    plan: free
     rootDir: server
     buildCommand: npm install
     startCommand: node server.js
@@ -30,6 +31,7 @@ services:
   - type: web
     name: livemail-frontend
     runtime: static
+    plan: free
     rootDir: client
     buildCommand: npm install && npm run build
     staticPublishPath: build
