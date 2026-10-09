@@ -350,13 +350,32 @@ const syncUserEmails = async (user, io = null, maxResults = 20, forceFull = fals
         if (user._id && String(user._id) !== 'default_google_user') {
             await User.updateOne({ _id: user._id }, { $set: { lastSyncTimestamp: new Date() } }).catch(() => {});
         }
+        authFailedUsers.delete(userEmail);
 
         return { synced: newSavedEmails.length, newEmails: newSavedEmails };
     } catch (error) {
-        console.error(`Error syncing emails for ${userEmail}:`, error.message);
+        if (error.message.includes('invalid_client') || error.message.includes('invalid_grant')) {
+            if (!authFailedUsers.has(userEmail)) {
+                authFailedUsers.add(userEmail);
+                console.warn(`[Gmail Sync] Re-authentication required for ${userEmail}: ${error.message}. Please sign in with Google.`);
+            }
+        } else {
+            console.error(`Error syncing emails for ${userEmail}:`, error.message);
+        }
         return { synced: 0, newEmails: [], error: error.message };
     } finally {
         activeSyncLocks.delete(userEmail);
+    }
+};
+
+const authFailedUsers = new Set();
+
+/**
+ * Clear auth failure flag for a user when they re-authenticate
+ */
+const clearAuthFailureFlag = (email) => {
+    if (email) {
+        authFailedUsers.delete(email.toLowerCase().trim());
     }
 };
 
@@ -391,23 +410,14 @@ const pollAllUsers = async (io) => {
             }
         }
 
-        // If no users in User collection, check if there are known user emails from past syncs or env
-        if (users.length === 0 && process.env.GOOGLE_REFRESH_TOKEN) {
-            const knownEmails = await Email.distinct('userEmail');
-            const targetEmail = knownEmails.find(e => e && e !== 'user@example.com') || 'sudeepbiradar031@gmail.com';
-            users = [{
-                _id: 'default_google_user',
-                email: targetEmail,
-                displayName: 'LiveMail User',
-                refreshToken: process.env.GOOGLE_REFRESH_TOKEN
-            }];
+        // Filter out users whose tokens have failed with invalid_grant/invalid_client
+        const activeUsers = users.filter(u => u && u.email && !authFailedUsers.has(u.email.toLowerCase().trim()));
+
+        if (activeUsers.length > 0) {
+            console.log(`[Gmail Background Poll] Checking inbox for ${activeUsers.length} active users...`);
         }
 
-        if (users.length > 0) {
-            console.log(`[Gmail Background Poll] Checking inbox for ${users.length} active users...`);
-        }
-
-        for (const user of users) {
+        for (const user of activeUsers) {
             try {
                 await syncUserEmails(user, io, 15);
             } catch (userError) {
@@ -506,5 +516,6 @@ module.exports = {
     pollAllUsers,
     sendEmail,
     replyToEmail,
-    normalizeCategoryName
+    normalizeCategoryName,
+    clearAuthFailureFlag
 };

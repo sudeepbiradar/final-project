@@ -72,6 +72,11 @@ passport.use(
           global.activeTokens.set(String(finalUser._id), finalUser);
         }
 
+        try {
+          const { clearAuthFailureFlag } = require('../services/gmailService');
+          clearAuthFailureFlag(email);
+        } catch (_) {}
+
         console.log(`✓ [Auth] Google user authenticated & persisted to DB: ${email}`);
         return done(null, finalUser);
       } catch (err) {
